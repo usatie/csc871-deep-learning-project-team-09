@@ -12,11 +12,11 @@ def main():
     
     if args.mode == 'train':
         # Import and run training
-        from train import main as train_main
+        from scripts.train import main as train_main
         train_main()
     else:
         # Import and run examples
-        from run_example import main as run_main
+        from scripts.run_example import main as run_main
         run_main()
 
 if __name__ == "__main__":

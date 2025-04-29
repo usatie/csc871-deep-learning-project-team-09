@@ -15,7 +15,7 @@ from .utils.training import (
     greedy_decode
 )
 from .config.config import TranslationConfig, get_default_config
-from .train import train_model, load_trained_model
+from .training.trainer import train_model, load_trained_model
 from .evaluation import check_outputs, run_model_example
 
 __all__ = [

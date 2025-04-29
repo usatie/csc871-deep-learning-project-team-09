@@ -5,7 +5,7 @@ from typing import List, Tuple
 from .config.config import TranslationConfig
 from .data.dataset import create_dataloaders
 from .utils.training import greedy_decode
-from .train import load_trained_model, load_tokenizers
+from .training.trainer import load_trained_model, load_tokenizers
 
 def check_outputs(
     cfg: TranslationConfig,

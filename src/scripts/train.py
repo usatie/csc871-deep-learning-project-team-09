@@ -1,7 +1,15 @@
 import argparse
 import os
+import sys
+from pathlib import Path
+
+# Add src to Python path
+src_path = str(Path(__file__).parent.parent)
+if src_path not in sys.path:
+    sys.path.append(src_path)
+
 from transformer.config.dataset_configs import get_config
-from transformer.train import train_model
+from transformer.training.trainer import train_model
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train transformer model for translation')

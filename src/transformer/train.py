@@ -163,7 +163,7 @@ def train_worker(
             }
             torch.save(
                 checkpoint,
-                f"{cfg.file_prefix}_{epoch:02d}.pt"
+                f"{cfg.file_prefix}{epoch:02d}.pt"
             )
     
     if cfg.distributed:

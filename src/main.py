@@ -1,7 +1,8 @@
 import torch
 import argparse
+import os
 from transformer.config.config import TranslationConfig, get_default_config
-from transformer.train import train_model
+from transformer.train import train_model, load_trained_model
 from transformer.data.dataset import multi30k_loader
 # Need to check if these dataset loaders exist
 from transformer.data.dataset import tatoeba_zh_en_loader
@@ -28,7 +29,7 @@ def multi30k_config():
         vocab_path='vocab_multi30k_de_en.pk',
         dataset_loader=multi30k_loader,
         distributed=torch.cuda.device_count() > 1,
-        file_prefix='multi30k_model_',
+        file_prefix='multi30k_de_en',
         batch_size=32,
     )
     return cfg
@@ -45,7 +46,7 @@ def tatoeba_zh_en_config():
         vocab_path='vocab_tatoeba_zh_en.pk',
         dataset_loader=tatoeba_zh_en_loader,
         distributed=torch.cuda.device_count() > 1,
-        file_prefix='tatoeba_zh_en_model_',
+        file_prefix='tatoeba_zh_en',
         batch_size=32,
     )
     return cfg
@@ -62,7 +63,7 @@ def tatoeba_ja_en_config():
         vocab_path='vocab_tatoeba_ja_en.pk',
         dataset_loader=None, # TODO: Add dataset loader
         distributed=torch.cuda.device_count() > 1,
-        file_prefix='tatoeba_ja_en_model_',
+        file_prefix='tatoeba_ja_en',
         batch_size=32,
     )
     return cfg
@@ -79,7 +80,15 @@ def main():
     torch.cuda.set_per_process_memory_fraction(0.8)
     cfg = get_config(args.dataset)
     print(cfg)
-    train_model(cfg)
+    
+    # Check if final checkpoint exists
+    final_checkpoint = os.path.join("checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt")
+    if os.path.exists(final_checkpoint):
+        print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
+        model = load_trained_model(cfg, final_checkpoint)
+    else:
+        print("No existing checkpoint found, starting training")
+        train_model(cfg)
 
 if __name__ == "__main__":
     main() 

@@ -16,6 +16,12 @@ from transformer.utils.training import (
 )
 from transformer.config.config import TranslationConfig
 
+def ensure_save_dir(cfg: TranslationConfig) -> str:
+    """Create and return the path to the save directory."""
+    save_dir = os.path.join("checkpoints", cfg.file_prefix)
+    os.makedirs(save_dir, exist_ok=True)
+    return save_dir
+
 def build_vocabularies(cfg: TranslationConfig):
     tokenizers = load_tokenizers(cfg.spacy_models)
     # Create datasets
@@ -114,6 +120,10 @@ def train_worker(
     train_state = TrainState()
     is_main_process = gpu == 0 or not cfg.distributed
     torch.cuda.empty_cache()
+    
+    # Create save directory
+    save_dir = ensure_save_dir(cfg)
+    
     for epoch in range(cfg.num_epochs):
         if cfg.distributed:
             train_dl.sampler.set_epoch(epoch)
@@ -161,10 +171,13 @@ def train_worker(
                 "src_vocab": src_vocab,
                 "tgt_vocab": tgt_vocab
             }
-            torch.save(
-                checkpoint,
-                f"{cfg.file_prefix}{epoch:02d}.pt"
-            )
+            checkpoint_path = os.path.join(save_dir, f"epoch_{epoch:02d}.pt")
+            torch.save(checkpoint, checkpoint_path)
+    
+    # Save final model
+    if is_main_process:
+        final_path = os.path.join(save_dir, "final.pt")
+        torch.save(module.state_dict(), final_path)
     
     if cfg.distributed:
         dist.destroy_process_group()
@@ -186,8 +199,9 @@ def train_model(cfg: TranslationConfig):
 def load_trained_model(cfg: TranslationConfig, path: str):
     """Load a trained model from checkpoint."""
     checkpoint = torch.load(path)
-    src_vocab = checkpoint["src_vocab"]
-    tgt_vocab = checkpoint["tgt_vocab"]
+
+    # Load vocabularies
+    src_vocab, tgt_vocab = checkpoint["src_vocab"], checkpoint["tgt_vocab"]
     
     model = make_model(
         len(src_vocab),
@@ -200,4 +214,5 @@ def load_trained_model(cfg: TranslationConfig, path: str):
     )
     
     model.load_state_dict(checkpoint["model"])
+
     return model

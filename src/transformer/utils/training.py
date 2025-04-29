@@ -1,8 +1,7 @@
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
-import math
-from typing import Optional, Callable
+from typing import Optional
 import time
 
 class TrainState:

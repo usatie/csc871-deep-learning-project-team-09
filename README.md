@@ -2,6 +2,32 @@
 ## Overview
 We aim to implement a simplified Transformer model from scratch and apply it to a Japanese-to-English (ja→en) and Chinese-to-English (ch→en) translation task using a small-scale dataset. Our focus is to better understand the internal mechanisms of Transformers (e.g., attention, positional encoding, masking) through hands-on implementation and experimentation, rather than achieving state-of-the-art performance.
 
+## Installation
+
+### Setting up the Environment
+1. Create and activate the conda environment using the provided environment.yml:
+```bash
+conda env create -f environment.yml
+conda activate transformer-translation
+```
+
+### Running the Translation Model
+The script supports three datasets: Multi30k (German-English), Tatoeba Chinese-English.
+
+To run the model:
+```bash
+# For Multi30k dataset (German-English)
+python src/main.py --dataset multi30k
+
+# For Chinese-English translation
+python src/main.py --dataset tatoeba_zh_en
+```
+
+The script will:
+1. Check for existing checkpoints in the `checkpoints` directory
+2. If no checkpoint exists, train the model from scratch
+3. Run example translations after training or loading the model
+
 ## Dataset
 We will use a subset of the Tatoeba corpus consisting of aligned Japanese-English and Chinese-English sentence pairs. The data will be filtered to include only short sentences (length < 50 tokens), and tokenization will be handled via a basic tokenizer or SentencePiece.
 

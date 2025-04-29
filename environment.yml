@@ -1,4 +1,4 @@
-name: csc871-project-transformer
+name: transformer-translation
 channels:
   - conda-forge
   - defaults

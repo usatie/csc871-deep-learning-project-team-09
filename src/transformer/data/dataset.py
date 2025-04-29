@@ -185,7 +185,7 @@ def multi30k_loader():
     return train, val, test
 
 def tatoeba_zh_en_loader(
-    path: str = "Sentence pairs in Mandarin Chinese-English - 2025-04-27.tsv",
+    path: str = ".data/datasets/tatoeba/zh_en/Sentence pairs in Mandarin Chinese-English - 2025-04-27.tsv",
     src_col: int = 1,
     tgt_col: int = 3,
     sep: str = "\t",

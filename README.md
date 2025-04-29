@@ -12,21 +12,56 @@ conda activate transformer-translation
 ```
 
 ### Running the Translation Model
-The script supports three datasets: Multi30k (German-English), Tatoeba Chinese-English.
+The script supports three datasets: Multi30k (German-English), Tatoeba Chinese-English, and Tatoeba Japanese-English.
 
-To run the model:
+#### Training the Model
+To train the model:
 ```bash
 # For Multi30k dataset (German-English)
-python src/main.py --dataset multi30k
+python src/train.py --dataset multi30k
 
 # For Chinese-English translation
-python src/main.py --dataset tatoeba_zh_en
+python src/train.py --dataset tatoeba_zh_en
+
+# For Japanese-English translation
+python src/train.py --dataset tatoeba_ja_en
+
+# Force retraining even if checkpoint exists
+python src/train.py --dataset multi30k --force
 ```
 
-The script will:
+#### Running Translation Examples
+To run translation examples with a trained model:
+```bash
+# For Multi30k dataset (German-English)
+python src/run_example.py --dataset multi30k --num_examples 5
+
+# For Chinese-English translation
+python src/run_example.py --dataset tatoeba_zh_en --num_examples 5
+
+# For Japanese-English translation
+python src/run_example.py --dataset tatoeba_ja_en --num_examples 5
+```
+
+#### Using the Main Entry Point
+Alternatively, you can use the main entry point:
+```bash
+# Training
+python src/main.py train --dataset multi30k
+
+# Running examples
+python src/main.py run --dataset multi30k --num_examples 5
+```
+
+The training script will:
 1. Check for existing checkpoints in the `checkpoints` directory
-2. If no checkpoint exists, train the model from scratch
-3. Run example translations after training or loading the model
+2. If no checkpoint exists (or if --force is specified), train the model from scratch
+3. Save checkpoints after each epoch
+
+The example script will:
+1. Load the trained model from the latest checkpoint
+2. Run the specified number of translation examples
+3. Display the source text, target text, and model's translation
 
 ## Dataset
 We will use a subset of the Tatoeba corpus consisting of aligned Japanese-English and Chinese-English sentence pairs. The data will be filtered to include only short sentences (length < 50 tokens), and tokenization will be handled via a basic tokenizer or SentencePiece.

@@ -1,6 +1,28 @@
 # Building and Evaluating a Lightweight Transformer for Japanese-English and Chinese-English Translation
+
 ## Overview
 We aim to implement a simplified Transformer model from scratch and apply it to a Japanese-to-English (ja→en) and Chinese-to-English (ch→en) translation task using a small-scale dataset. Our focus is to better understand the internal mechanisms of Transformers (e.g., attention, positional encoding, masking) through hands-on implementation and experimentation, rather than achieving state-of-the-art performance.
+
+## Project Structure
+```
+src/
+├── __init__.py          # Makes src a Python package
+├── main.py              # Main entry point
+├── scripts/             # Command-line scripts
+│   ├── run_example.py   # Script for running translation examples
+│   └── train.py         # Training script
+└── transformer/         # Core transformer implementation
+    ├── config/          # Configuration files
+    ├── data/            # Data loading and processing
+    ├── evaluation.py    # Evaluation utilities
+    ├── __init__.py      # Package exports
+    ├── model/           # Model architecture
+    ├── tests/           # Unit tests
+    ├── training/        # Training-related code
+    │   ├── trainer.py   # Core training logic
+    │   └── __init__.py  # Package exports
+    └── utils/           # Utility functions
+```
 
 ## Installation
 
@@ -18,39 +40,29 @@ The script supports three datasets: Multi30k (German-English), Tatoeba Chinese-E
 To train the model:
 ```bash
 # For Multi30k dataset (German-English)
-python src/train.py --dataset multi30k
+python src/scripts/train.py --dataset multi30k
 
 # For Chinese-English translation
-python src/train.py --dataset tatoeba_zh_en
+python src/scripts/train.py --dataset tatoeba_zh_en
 
 # For Japanese-English translation
-python src/train.py --dataset tatoeba_ja_en
+python src/scripts/train.py --dataset tatoeba_ja_en
 
 # Force retraining even if checkpoint exists
-python src/train.py --dataset multi30k --force
+python src/scripts/train.py --dataset multi30k --force
 ```
 
 #### Running Translation Examples
 To run translation examples with a trained model:
 ```bash
 # For Multi30k dataset (German-English)
-python src/run_example.py --dataset multi30k --num_examples 5
+python src/scripts/run_example.py --dataset multi30k --num_examples 5
 
 # For Chinese-English translation
-python src/run_example.py --dataset tatoeba_zh_en --num_examples 5
+python src/scripts/run_example.py --dataset tatoeba_zh_en --num_examples 5
 
 # For Japanese-English translation
-python src/run_example.py --dataset tatoeba_ja_en --num_examples 5
-```
-
-#### Using the Main Entry Point
-Alternatively, you can use the main entry point:
-```bash
-# Training
-python src/main.py train --dataset multi30k
-
-# Running examples
-python src/main.py run --dataset multi30k --num_examples 5
+python src/scripts/run_example.py --dataset tatoeba_ja_en --num_examples 5
 ```
 
 The training script will:
@@ -66,8 +78,8 @@ The example script will:
 ## Dataset
 We will use a subset of the Tatoeba corpus consisting of aligned Japanese-English and Chinese-English sentence pairs. The data will be filtered to include only short sentences (length < 50 tokens), and tokenization will be handled via a basic tokenizer or SentencePiece.
 
-## Planned Model Architecture
-- Encoder–Decoder Transformer with 2 layers, 4 attention heads
+## Model Architecture
+- Encoder–Decoder Transformer with 6 layers, 8 attention heads
 - Positional encoding
 - Masked multi-head self-attention in the decoder
 - Teacher forcing during training

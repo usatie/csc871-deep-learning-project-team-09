@@ -24,7 +24,20 @@ class TSVTranslationDataset(IterableDataset):
 
 def load_tokenizers(model_names: Dict[str, str]) -> Dict[str, spacy.language.Language]:
     """Load spacy tokenizers for different languages."""
-    return {lang: spacy.load(model) for lang, model in model_names.items()}
+    result = {}
+    for lang, model in model_names.items():
+        # Check if model is already downloaded
+        try:
+            # Try to load the model directly first
+            nlp = spacy.load(model)
+            result[lang] = nlp
+        except OSError:
+            # If model is not found, download it
+            print(f"Model {model} not found. Downloading...")
+            spacy.cli.download(model)
+            # Load the newly downloaded model
+            result[lang] = spacy.load(model)
+    return result
 
 def tokenize(text: str, nlp: spacy.language.Language) -> List[str]:
     """Tokenize text using spacy tokenizer."""
@@ -132,7 +145,6 @@ def create_dataloaders(
     vocab_src,
     vocab_tgt,
     device,
-    batch_size=12000,
     max_len=128,
     distributed=False
 ):
@@ -140,7 +152,7 @@ def create_dataloaders(
     def wrap(ds):
         return torch.utils.data.DataLoader(
             ds,
-            batch_size=batch_size,
+            batch_size=config.batch_size,
             collate_fn=make_collate_fn(config, tokenizers, vocab_src, vocab_tgt, device, max_len),
             shuffle=not distributed,
         )
@@ -151,7 +163,7 @@ def create_dataloaders(
         train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
         train_dl = torch.utils.data.DataLoader(
             train_ds,
-            batch_size=batch_size,
+            batch_size=config.batch_size,
             collate_fn=make_collate_fn(config, tokenizers, vocab_src, vocab_tgt, device, max_len),
             sampler=train_sampler,
             num_workers=4,

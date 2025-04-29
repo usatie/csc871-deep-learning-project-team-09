@@ -4,6 +4,9 @@ from torch.optim.lr_scheduler import LambdaLR
 from typing import Optional
 import time
 
+from transformer.model import subsequent_mask
+
+
 class TrainState:
     """Track number of steps, examples, and tokens processed"""
     step: int = 0  # Steps in the current epoch

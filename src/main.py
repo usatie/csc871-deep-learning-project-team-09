@@ -6,6 +6,7 @@ from transformer.train import train_model, load_trained_model
 from transformer.data.dataset import multi30k_loader
 # Need to check if these dataset loaders exist
 from transformer.data.dataset import tatoeba_zh_en_loader
+from transformer.evaluation import run_model_example
 
 def get_config(dataset):
     if dataset == "multi30k":
@@ -77,18 +78,19 @@ def parse_args():
 
 def main():
     args = parse_args()
-    torch.cuda.set_per_process_memory_fraction(0.8)
     cfg = get_config(args.dataset)
     print(cfg)
     
     # Check if final checkpoint exists
     final_checkpoint = os.path.join("checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt")
-    if os.path.exists(final_checkpoint):
-        print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
-        model = load_trained_model(cfg, final_checkpoint)
-    else:
+    if not os.path.exists(final_checkpoint):
         print("No existing checkpoint found, starting training")
         train_model(cfg)
+    else:
+        print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
+
+    cfg.batch_size = 1
+    run_model_example(cfg, 3)
 
 if __name__ == "__main__":
     main() 

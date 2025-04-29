@@ -215,4 +215,4 @@ def load_trained_model(cfg: TranslationConfig, path: str):
     
     model.load_state_dict(checkpoint["model"])
 
-    return model
+    return model, src_vocab, tgt_vocab

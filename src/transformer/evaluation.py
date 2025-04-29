@@ -26,12 +26,14 @@ def check_outputs(
     Returns:
         List of tuples containing (batch, src_tokens, tgt_tokens, output_ids, out_text, out_tokens)
     """
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = model.to(device)
     _, valid_loader, _ = create_dataloaders(
         cfg,
         tokenizers,
         vocab_src,
         vocab_tgt,
-        device=torch.device("cpu"),
+        device=device,
     )
     pad_id = vocab_tgt["<blank>"]
     eos_token = "</s>"

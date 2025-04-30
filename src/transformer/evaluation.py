@@ -7,6 +7,7 @@ from .data.dataset import create_dataloaders, load_tokenizers
 from .utils.training import greedy_decode
 from .training.trainer import load_trained_model
 
+
 def check_outputs(
     cfg: TranslationConfig,
     model: torch.nn.Module,
@@ -17,12 +18,12 @@ def check_outputs(
 ) -> List[Tuple]:
     """
     Check model outputs on validation data.
-    
+
     Args:
         cfg: Translation configuration
         model: Trained model
         n_examples: Number of examples to check
-        
+
     Returns:
         List of tuples containing (batch, src_tokens, tgt_tokens, output_ids, out_text, out_tokens)
     """
@@ -60,9 +61,12 @@ def check_outputs(
         out_text = " ".join(out_tokens)
 
         print("Model output:   ", out_text)
-        results.append((batch, src_tokens, tgt_tokens, output_ids, out_text, out_tokens))
+        results.append(
+            (batch, src_tokens, tgt_tokens, output_ids, out_text, out_tokens)
+        )
 
     return results
+
 
 def run_model_example(
     cfg: TranslationConfig,
@@ -70,16 +74,18 @@ def run_model_example(
 ) -> Tuple[torch.nn.Module, List[Tuple]]:
     """
     Load a trained model and run example translations.
-    
+
     Args:
         cfg: Translation configuration
         n_examples: Number of examples to check
-        
+
     Returns:
         Tuple of (model, example_data)
     """
     print("Loading model & vocab...")
-    final_checkpoint = os.path.join("checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt")
+    final_checkpoint = os.path.join(
+        "checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt"
+    )
     if os.path.exists(final_checkpoint):
         print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
         model, vocab_src, vocab_tgt = load_trained_model(cfg, final_checkpoint)
@@ -89,5 +95,7 @@ def run_model_example(
     tokenizers = load_tokenizers(cfg.spacy_models)
     model.eval()
     print("Checking model outputs:")
-    example_data = check_outputs(cfg, model, tokenizers, vocab_src, vocab_tgt, n_examples=n_examples)
-    return model, example_data 
+    example_data = check_outputs(
+        cfg, model, tokenizers, vocab_src, vocab_tgt, n_examples=n_examples
+    )
+    return model, example_data

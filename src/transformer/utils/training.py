@@ -9,13 +9,16 @@ from transformer.model import subsequent_mask
 
 class TrainState:
     """Track number of steps, examples, and tokens processed"""
+
     step: int = 0  # Steps in the current epoch
     accum_step: int = 0  # Number of gradient accumulation steps
     samples: int = 0  # total # of examples used
     tokens: int = 0  # total # of tokens processed
 
+
 class LabelSmoothing(nn.Module):
     """Implement label smoothing."""
+
     def __init__(self, size: int, padding_idx: int, smoothing: float = 0.0):
         super(LabelSmoothing, self).__init__()
         self.criterion = nn.KLDivLoss(reduction="sum")
@@ -37,8 +40,10 @@ class LabelSmoothing(nn.Module):
         self.true_dist = true_dist
         return self.criterion(x, true_dist.clone().detach())
 
+
 class SimpleLossCompute:
     """A simple loss compute and train function."""
+
     def __init__(self, generator: nn.Module, criterion: nn.Module):
         self.generator = generator
         self.criterion = criterion
@@ -46,12 +51,11 @@ class SimpleLossCompute:
     def __call__(self, x: torch.Tensor, y: torch.Tensor, norm: float) -> torch.Tensor:
         x = self.generator(x)
         sloss = (
-            self.criterion(
-                x.contiguous().view(-1, x.size(-1)), y.contiguous().view(-1)
-            )
+            self.criterion(x.contiguous().view(-1, x.size(-1)), y.contiguous().view(-1))
             / norm
         )
         return sloss.data * norm, sloss
+
 
 def rate(step: int, model_size: int, factor: float, warmup: int) -> float:
     """
@@ -63,6 +67,7 @@ def rate(step: int, model_size: int, factor: float, warmup: int) -> float:
     return factor * (
         model_size ** (-0.5) * min(step ** (-0.5), step * warmup ** (-1.5))
     )
+
 
 def run_epoch(
     data_iter,
@@ -80,24 +85,22 @@ def run_epoch(
     total_loss = 0
     tokens = 0
     n_accum = 0
-    
+
     for i, batch in enumerate(data_iter):
-        out = model.forward(
-            batch.src, batch.tgt, batch.src_mask, batch.tgt_mask
-        )
-            
+        out = model.forward(batch.src, batch.tgt, batch.src_mask, batch.tgt_mask)
+
         loss, loss_node = loss_compute(out, batch.tgt_y, batch.ntokens)
-            
+
         total_loss += loss
         total_tokens += batch.ntokens
         tokens += batch.ntokens
-        
+
         if mode == "train" or mode == "train+log":
             loss_node.backward()
             train_state.step += 1
             train_state.samples += batch.src.size(0)
             train_state.tokens += batch.ntokens
-            
+
             if i % accum_iter == 0:
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
@@ -119,8 +122,9 @@ def run_epoch(
             tokens = 0
         del loss
         del loss_node
-    
+
     return total_loss / total_tokens, train_state
+
 
 def greedy_decode(
     model: nn.Module,
@@ -143,4 +147,4 @@ def greedy_decode(
         ys = torch.cat(
             [ys, torch.zeros(batch_size, 1).type_as(src.data).fill_(next_word)], dim=1
         )
-    return ys 
+    return ys

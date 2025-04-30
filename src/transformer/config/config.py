@@ -2,12 +2,15 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Callable
 import os
 
+
 @dataclass
 class TranslationConfig:
     # Language and tokenizer settings
     src_lang: str
     tgt_lang: str
-    spacy_models: Dict[str, str]  # e.g. {'zh': 'zh_core_web_sm', 'en': 'en_core_web_sm'}
+    spacy_models: Dict[
+        str, str
+    ]  # e.g. {'zh': 'zh_core_web_sm', 'en': 'en_core_web_sm'}
     dataset_loader: Callable[[], Tuple]  # e.g. load() -> (train, val, test)
 
     # Vocabulary settings
@@ -42,15 +45,13 @@ class TranslationConfig:
         if vocab_dir:  # Only create directory if path contains a directory
             os.makedirs(vocab_dir, exist_ok=True)
 
+
 def get_default_config() -> TranslationConfig:
     """Get default configuration for training."""
     return TranslationConfig(
         src_lang="zh",
         tgt_lang="en",
-        spacy_models={
-            "zh": "zh_core_web_sm",
-            "en": "en_core_web_sm"
-        },
+        spacy_models={"zh": "zh_core_web_sm", "en": "en_core_web_sm"},
         dataset_loader=lambda: None,  # This should be set by the user
         min_freq=2,
         specials=["<s>", "</s>", "<blank>", "<unk>"],
@@ -69,5 +70,5 @@ def get_default_config() -> TranslationConfig:
         accum_iter=10,
         base_lr=1.0,
         warmup=3000,
-        file_prefix="model_"
-    ) 
+        file_prefix="model_",
+    )

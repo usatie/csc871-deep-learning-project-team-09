@@ -3,9 +3,9 @@ import os
 from typing import List, Tuple
 
 from .config.config import TranslationConfig
-from .data.dataset import create_dataloaders
+from .data.dataset import create_dataloaders, load_tokenizers
 from .utils.training import greedy_decode
-from .training.trainer import load_trained_model, load_tokenizers
+from .training.trainer import load_trained_model
 
 def check_outputs(
     cfg: TranslationConfig,

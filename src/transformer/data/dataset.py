@@ -1,6 +1,6 @@
 import torch
 import torchtext
-from torch.utils.data import Dataset, IterableDataset
+from torch.utils.data import IterableDataset
 import spacy
 from typing import List, Tuple, Dict, Callable
 import pandas as pd

@@ -13,10 +13,7 @@ from transformer.model.transformer import (
 from transformer.utils.training import LabelSmoothing
 from transformer.data.dataset import (
     tokenize,
-    build_vocab,
     make_collate_fn,
-    multi30k_loader,
-    tatoeba_zh_en_loader
 )
 import spacy
 import unittest

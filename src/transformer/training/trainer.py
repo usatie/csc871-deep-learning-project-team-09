@@ -111,7 +111,6 @@ def train_worker(
         src_vocab,
         tgt_vocab,
         device=f"cuda:{gpu}",
-        batch_size=cfg.batch_size,
         max_len=cfg.max_len,
         distributed=cfg.distributed
     )

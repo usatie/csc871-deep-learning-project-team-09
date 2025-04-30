@@ -14,10 +14,11 @@ from transformer.utils.training import LabelSmoothing
 from transformer.data.dataset import (
     tokenize,
     make_collate_fn,
+    Vocab,
+    load_tokenizers,
 )
 import spacy
 import unittest
-from torchtext.vocab import Vocab
 from collections import Counter
 
 
@@ -201,40 +202,8 @@ class TestTransformerComponents(unittest.TestCase):
         self.assertTrue(all(isinstance(token, str) for token in tokens))
 
     def test_make_collate_fn(self):
-        """Test the collate function."""
-        nlp = spacy.load("en_core_web_sm")
-        tokenizers = {"en": nlp}
-
-        # Create a vocabulary with default index
-        counter = Counter(["hello", "world", "test", "sentence"])
-        specials = ["<s>", "</s>", "<blank>", "<unk>"]
-        for tok in specials:
-            counter.update(tok)
-
-        # Create vocabulary with special tokens
-        vocab = Vocab(counter)
-
-        collate_fn = make_collate_fn(
-            type("Config", (), {"src_lang": "en", "tgt_lang": "en"}),
-            tokenizers,
-            vocab,
-            vocab,
-            self.device,
-        )
-
-        batch = [("hello world", "hello world"), ("test sentence", "test sentence")]
-        src_tensor, tgt_tensor = collate_fn(batch)
-
-        self.assertIsInstance(src_tensor, torch.Tensor)
-        self.assertIsInstance(tgt_tensor, torch.Tensor)
-        self.assertEqual(src_tensor.shape[0], len(batch))
-        self.assertEqual(tgt_tensor.shape[0], len(batch))
-
-    def test_make_collate_fn_german(self):
         """Test the collate function with German tokenizer."""
-        nlp_de = spacy.load("de_core_news_sm")
-        nlp_en = spacy.load("en_core_web_sm")
-        tokenizers = {"de": nlp_de, "en": nlp_en}
+        tokenizers = load_tokenizers({"de": "de_core_news_sm", "en": "en_core_web_sm"})
 
         # Create vocabularies for both languages
         de_counter = Counter(["hallo", "welt", "test", "satz"])
@@ -261,7 +230,8 @@ class TestTransformerComponents(unittest.TestCase):
         batch = [("hallo welt", "hello world"), ("test satz", "test sentence")]
 
         # Test collate function
-        src_tensor, tgt_tensor = collate_fn(batch)
+        rb = collate_fn(batch)
+        src_tensor, tgt_tensor = rb.src, rb.tgt
 
         # Verify outputs
         self.assertIsInstance(src_tensor, torch.Tensor)

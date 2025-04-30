@@ -1,11 +1,4 @@
 import argparse
-import sys
-from pathlib import Path
-
-# Add src to Python path
-src_path = str(Path(__file__).parent.parent)
-if src_path not in sys.path:
-    sys.path.append(src_path)
 
 from transformer.evaluation import run_model_example
 from transformer.config.dataset_configs import get_config

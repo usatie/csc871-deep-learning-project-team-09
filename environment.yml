@@ -3,16 +3,9 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.9
+  - python=3.12
   - spacy=3.8.5
-  - numpy=1.26.4
-  - pandas=2.2.2
-  - portalocker=2.8.2
-  - altair=5.2.0
-  - gputil=1.4.0
-  - pip
   - pip:
-    - torch==2.0.1
-    - torchtext==0.15.2
-    - torchdata==0.6.1
-    - GPUtil==1.4.0  # Some packages are better installed via pip 
+    - torch==2.7.0
+    - GPUtil
+    - -e .

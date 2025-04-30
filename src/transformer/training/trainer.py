@@ -198,7 +198,7 @@ def train_model(cfg: TranslationConfig):
 
 def load_trained_model(cfg: TranslationConfig, path: str):
     """Load a trained model from checkpoint."""
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, weights_only=False)
 
     # Load vocabularies
     src_vocab, tgt_vocab = checkpoint["src_vocab"], checkpoint["tgt_vocab"]

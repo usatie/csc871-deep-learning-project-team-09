@@ -124,6 +124,10 @@ class Vocab:
         """Get index-to-string mapping."""
         return self.itos.copy()
 
+    def lookup_token(self, index: int) -> str:
+        """Lookup token for an index."""
+        return self.itos[index]
+
     def set_default_index(self, index: int) -> None:
         """Set the default index to return for unknown tokens."""
         self.default_index = index

@@ -1,16 +1,21 @@
-import torch
+# Standard library imports
 import os
 import urllib.request
 import tarfile
-import spacy
 import hashlib
 from typing import List, Tuple, Dict, Callable, Iterator, Optional
-from torch.utils.data import random_split, IterableDataset
 from collections import Counter, OrderedDict
 
+# Third-party imports
+import torch
+import spacy
+from torch.utils.data import random_split, IterableDataset
+
+# Local imports
 from transformer.model import subsequent_mask
 
 
+# Helper functions
 def to_map_style_dataset(iter_data):
     r"""Convert iterable-style dataset to map-style dataset.
 
@@ -33,46 +38,30 @@ def to_map_style_dataset(iter_data):
     return _MapStyleDataset(iter_data)
 
 
-class TSVTranslationDataset(IterableDataset):
-    """Dataset for loading translation pairs from TSV files."""
-
-    def __init__(self, path: str, src_col: int = 1, tgt_col: int = 3, sep: str = "\t"):
-        self.path = path
-        self.src_col = src_col
-        self.tgt_col = tgt_col
-        self.sep = sep
-
-    def __iter__(self):
-        with open(self.path, "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.strip().split(self.sep)
-                if len(parts) > max(self.src_col, self.tgt_col):
-                    yield parts[self.src_col], parts[self.tgt_col]
-
-
-def load_tokenizers(model_names: Dict[str, str]) -> Dict[str, spacy.language.Language]:
-    """Load spacy tokenizers for different languages."""
-    result = {}
-    for lang, model in model_names.items():
-        # Check if model is already downloaded
-        try:
-            # Try to load the model directly first
-            nlp = spacy.load(model)
-            result[lang] = nlp
-        except OSError:
-            # If model is not found, download it
-            print(f"Model {model} not found. Downloading...")
-            spacy.cli.download(model)
-            # Load the newly downloaded model
-            result[lang] = spacy.load(model)
-    return result
-
-
 def tokenize(text: str, nlp: spacy.language.Language) -> List[str]:
     """Tokenize text using spacy tokenizer."""
     return [tok.text for tok in nlp.tokenizer(text)]
 
 
+def verify_sha256(file_path: str, expected_sha256: str) -> bool:
+    """Verify the SHA-256 hash of a file.
+
+    Args:
+        file_path: Path to the file to verify
+        expected_sha256: Expected SHA-256 hash in hexadecimal string format
+
+    Returns:
+        True if the hash matches, False otherwise
+    """
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        # Read the file in chunks to handle large files
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest() == expected_sha256
+
+
+# Core classes
 class Vocab:
     """Custom vocabulary class to replace torchtext.vocab.Vocab."""
 
@@ -137,18 +126,6 @@ class Vocab:
         self.default_index = index
 
 
-def build_vocab(
-    iterator: Iterator[str], tokenize_fn: Callable, min_freq: int, specials: List[str]
-) -> Vocab:
-    """Build vocabulary from iterator."""
-
-    counter = Counter()
-    for text in iterator:
-        counter.update(tokenize_fn(text))
-
-    return Vocab(counter, min_freq=min_freq, specials=specials)
-
-
 class Batch:
     """Object for holding a batch of data with mask during training."""
 
@@ -169,6 +146,40 @@ class Batch:
         return tgt_mask
 
 
+# Dataset classes
+class TSVTranslationDataset(IterableDataset):
+    """Dataset for loading translation pairs from TSV files."""
+
+    def __init__(self, path: str, src_col: int = 1, tgt_col: int = 3, sep: str = "\t"):
+        self.path = path
+        self.src_col = src_col
+        self.tgt_col = tgt_col
+        self.sep = sep
+
+    def __iter__(self):
+        with open(self.path, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split(self.sep)
+                if len(parts) > max(self.src_col, self.tgt_col):
+                    yield parts[self.src_col], parts[self.tgt_col]
+
+
+class Multi30kDataset(IterableDataset):
+    """Dataset for loading Multi30k translation pairs."""
+
+    def __init__(self, de_path: str, en_path: str):
+        self.de_path = de_path
+        self.en_path = en_path
+
+    def __iter__(self):
+        with open(self.de_path, "r", encoding="utf-8") as de_file, open(
+            self.en_path, "r", encoding="utf-8"
+        ) as en_file:
+            for de_line, en_line in zip(de_file, en_file):
+                yield de_line.strip(), en_line.strip()
+
+
+# DataLoader and collation functions
 def make_collate_fn(config, tokenizers, vocab_src, vocab_tgt, device, max_len=128):
     """Create collate function for DataLoader."""
 
@@ -281,22 +292,35 @@ def create_dataloaders(
     return train_dl, val_dl, test_dl
 
 
-def verify_sha256(file_path: str, expected_sha256: str) -> bool:
-    """Verify the SHA-256 hash of a file.
+# Dataset loading utilities
+def load_tokenizers(model_names: Dict[str, str]) -> Dict[str, spacy.language.Language]:
+    """Load spacy tokenizers for different languages."""
+    result = {}
+    for lang, model in model_names.items():
+        # Check if model is already downloaded
+        try:
+            # Try to load the model directly first
+            nlp = spacy.load(model)
+            result[lang] = nlp
+        except OSError:
+            # If model is not found, download it
+            print(f"Model {model} not found. Downloading...")
+            spacy.cli.download(model)
+            # Load the newly downloaded model
+            result[lang] = spacy.load(model)
+    return result
 
-    Args:
-        file_path: Path to the file to verify
-        expected_sha256: Expected SHA-256 hash in hexadecimal string format
 
-    Returns:
-        True if the hash matches, False otherwise
-    """
-    sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
-        # Read the file in chunks to handle large files
-        for chunk in iter(lambda: f.read(4096), b""):
-            sha256_hash.update(chunk)
-    return sha256_hash.hexdigest() == expected_sha256
+def build_vocab(
+    iterator: Iterator[str], tokenize_fn: Callable, min_freq: int, specials: List[str]
+) -> Vocab:
+    """Build vocabulary from iterator."""
+
+    counter = Counter()
+    for text in iterator:
+        counter.update(tokenize_fn(text))
+
+    return Vocab(counter, min_freq=min_freq, specials=specials)
 
 
 def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
@@ -357,21 +381,6 @@ def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
                 tar.extractall(path=root)
 
     return file_paths
-
-
-class Multi30kDataset(IterableDataset):
-    """Dataset for loading Multi30k translation pairs."""
-
-    def __init__(self, de_path: str, en_path: str):
-        self.de_path = de_path
-        self.en_path = en_path
-
-    def __iter__(self):
-        with open(self.de_path, "r", encoding="utf-8") as de_file, open(
-            self.en_path, "r", encoding="utf-8"
-        ) as en_file:
-            for de_line, en_line in zip(de_file, en_file):
-                yield de_line.strip(), en_line.strip()
 
 
 def multi30k_loader():

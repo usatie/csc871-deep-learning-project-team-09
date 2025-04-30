@@ -1,6 +1,7 @@
-import torch
 import os
 from typing import List, Tuple
+
+import torch
 
 from .config.config import TranslationConfig
 from .data.dataset import create_dataloaders, load_tokenizers

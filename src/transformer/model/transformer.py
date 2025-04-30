@@ -1,7 +1,8 @@
+import copy
+import math
+
 import torch
 import torch.nn as nn
-import math
-import copy
 
 
 class EncoderDecoder(nn.Module):

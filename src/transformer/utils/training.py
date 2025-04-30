@@ -1,8 +1,9 @@
+import time
+from typing import Optional
+
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
-from typing import Optional
-import time
 
 from transformer.model import subsequent_mask
 

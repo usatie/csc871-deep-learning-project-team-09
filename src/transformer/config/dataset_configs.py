@@ -1,4 +1,5 @@
 import torch
+
 from transformer.config.config import TranslationConfig
 from transformer.data.dataset import multi30k_loader, tatoeba_zh_en_loader
 

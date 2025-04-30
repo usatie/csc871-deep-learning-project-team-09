@@ -16,18 +16,18 @@ from transformer.model import subsequent_mask
 
 
 # Helper functions
-def to_map_style_dataset(iter_data):
+def to_map_style_dataset(iterable_dataset):
     r"""Convert iterable-style dataset to map-style dataset.
 
     args:
-        iter_data: An iterator type object. Examples include Iterable datasets, string list, text io, generators etc.
+        iterable_dataset: An iterator type object. Examples include Iterable datasets, string list, text io, generators etc.
     """
 
     # Inner class to convert iterable-style to map-style dataset
     class _MapStyleDataset(torch.utils.data.Dataset):
-        def __init__(self, iter_data) -> None:
+        def __init__(self, iterable_dataset) -> None:
             # TODO Avoid list issue #1296
-            self._data = list(iter_data)
+            self._data = list(iterable_dataset)
 
         def __len__(self):
             return len(self._data)
@@ -35,30 +35,30 @@ def to_map_style_dataset(iter_data):
         def __getitem__(self, idx):
             return self._data[idx]
 
-    return _MapStyleDataset(iter_data)
+    return _MapStyleDataset(iterable_dataset)
 
 
-def tokenize(text: str, nlp: spacy.language.Language) -> List[str]:
+def tokenize(text: str, tokenizer: spacy.language.Language) -> List[str]:
     """Tokenize text using spacy tokenizer."""
-    return [tok.text for tok in nlp.tokenizer(text)]
+    return [token.text for token in tokenizer.tokenizer(text)]
 
 
-def verify_sha256(file_path: str, expected_sha256: str) -> bool:
+def verify_sha256(file_path: str, expected_hash: str) -> bool:
     """Verify the SHA-256 hash of a file.
 
     Args:
         file_path: Path to the file to verify
-        expected_sha256: Expected SHA-256 hash in hexadecimal string format
+        expected_hash: Expected SHA-256 hash in hexadecimal string format
 
     Returns:
         True if the hash matches, False otherwise
     """
     sha256_hash = hashlib.sha256()
-    with open(file_path, "rb") as f:
+    with open(file_path, "rb") as file:
         # Read the file in chunks to handle large files
-        for chunk in iter(lambda: f.read(4096), b""):
+        for chunk in iter(lambda: file.read(4096), b""):
             sha256_hash.update(chunk)
-    return sha256_hash.hexdigest() == expected_sha256
+    return sha256_hash.hexdigest() == expected_hash
 
 
 # Core classes
@@ -66,12 +66,15 @@ class Vocab:
     """Custom vocabulary class to replace torchtext.vocab.Vocab."""
 
     def __init__(
-        self, counter: Counter, min_freq: int = 1, specials: Optional[List[str]] = None
+        self,
+        token_counter: Counter,
+        min_freq: int = 1,
+        specials: Optional[List[str]] = None,
     ):
         """Initialize vocabulary from counter and special tokens.
 
         Args:
-            counter: Counter object containing token frequencies
+            token_counter: Counter object containing token frequencies
             min_freq: Minimum frequency for a token to be included
             specials: List of special tokens to add to vocabulary
         """
@@ -81,7 +84,7 @@ class Vocab:
 
         # Filter tokens by minimum frequency
         filtered_tokens = [
-            (token, freq) for token, freq in counter.items() if freq >= min_freq
+            (token, freq) for token, freq in token_counter.items() if freq >= min_freq
         ]
 
         # Sort by frequency (descending) and then alphabetically
@@ -256,12 +259,12 @@ def create_dataloaders(
 ):
     """Create train, validation and test dataloaders."""
 
-    def wrap(ds):
+    def wrap(dataset):
         # Don't shuffle for IterableDataset
         shuffle = not distributed
-        map_style_ds = to_map_style_dataset(ds)
+        map_style_dataset = to_map_style_dataset(dataset)
         return torch.utils.data.DataLoader(
-            map_style_ds,
+            map_style_dataset,
             batch_size=config.batch_size,
             collate_fn=make_collate_fn(
                 config, tokenizers, vocab_src, vocab_tgt, device, max_len
@@ -295,39 +298,42 @@ def create_dataloaders(
 # Dataset loading utilities
 def load_tokenizers(model_names: Dict[str, str]) -> Dict[str, spacy.language.Language]:
     """Load spacy tokenizers for different languages."""
-    result = {}
+    tokenizers = {}
     for lang, model in model_names.items():
         # Check if model is already downloaded
         try:
             # Try to load the model directly first
             nlp = spacy.load(model)
-            result[lang] = nlp
+            tokenizers[lang] = nlp
         except OSError:
             # If model is not found, download it
             print(f"Model {model} not found. Downloading...")
             spacy.cli.download(model)
             # Load the newly downloaded model
-            result[lang] = spacy.load(model)
-    return result
+            tokenizers[lang] = spacy.load(model)
+    return tokenizers
 
 
 def build_vocab(
-    iterator: Iterator[str], tokenize_fn: Callable, min_freq: int, specials: List[str]
+    text_iterator: Iterator[str],
+    tokenize_fn: Callable,
+    min_freq: int,
+    specials: List[str],
 ) -> Vocab:
     """Build vocabulary from iterator."""
 
-    counter = Counter()
-    for text in iterator:
-        counter.update(tokenize_fn(text))
+    token_counter = Counter()
+    for text in text_iterator:
+        token_counter.update(tokenize_fn(text))
 
-    return Vocab(counter, min_freq=min_freq, specials=specials)
+    return Vocab(token_counter, min_freq=min_freq, specials=specials)
 
 
-def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
+def download_multi30k(root_dir: str = ".data/datasets/multi30k") -> Dict[str, str]:
     """Download Multi30k dataset files if they don't exist.
 
     Args:
-        root: Root directory to store the dataset
+        root_dir: Root directory to store the dataset
 
     Returns:
         Dictionary mapping split names to their file paths
@@ -344,12 +350,12 @@ def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
     file_prefixes = {"train": "train", "valid": "val"}
 
     # Create root directory if it doesn't exist
-    os.makedirs(root, exist_ok=True)
+    os.makedirs(root_dir, exist_ok=True)
 
     file_paths = {}
     for split in ["train", "valid"]:
         url = urls[split]
-        tar_path = os.path.join(root, f"{split}.tar.gz")
+        tar_path = os.path.join(root_dir, f"{split}.tar.gz")
 
         # Download if not exists or if hash verification fails
         if not os.path.exists(tar_path) or not verify_sha256(
@@ -368,8 +374,8 @@ def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
         # Store paths to the extracted files
         prefix = file_prefixes[split]
         file_paths[split] = {
-            "de": os.path.join(root, f"{prefix}.de"),
-            "en": os.path.join(root, f"{prefix}.en"),
+            "de": os.path.join(root_dir, f"{prefix}.de"),
+            "en": os.path.join(root_dir, f"{prefix}.en"),
         }
 
         # Extract if not already extracted
@@ -378,7 +384,7 @@ def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
         ):
             print(f"Extracting {split} dataset...")
             with tarfile.open(tar_path, "r:gz") as tar:
-                tar.extractall(path=root)
+                tar.extractall(path=root_dir)
 
     return file_paths
 

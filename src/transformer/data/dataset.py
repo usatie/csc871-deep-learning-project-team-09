@@ -2,8 +2,9 @@ import torch
 import torchtext
 from torch.utils.data import IterableDataset
 import spacy
-from typing import List, Tuple, Dict, Callable
+from typing import List, Tuple, Dict, Callable, Iterator, Optional
 from torch.utils.data import random_split
+from collections import Counter, OrderedDict
 
 
 class TSVTranslationDataset(IterableDataset):
@@ -46,19 +47,77 @@ def tokenize(text: str, nlp: spacy.language.Language) -> List[str]:
     return [tok.text for tok in nlp.tokenizer(text)]
 
 
+class Vocab:
+    """Custom vocabulary class to replace torchtext.vocab.Vocab."""
+    
+    def __init__(self, counter: Counter, min_freq: int = 1, specials: Optional[List[str]] = None):
+        """Initialize vocabulary from counter and special tokens.
+        
+        Args:
+            counter: Counter object containing token frequencies
+            min_freq: Minimum frequency for a token to be included
+            specials: List of special tokens to add to vocabulary
+        """
+        self.specials = specials if specials is not None else []
+        self.min_freq = min_freq
+        self.default_index = 0  # Default to first token (usually <unk>)
+        
+        # Filter tokens by minimum frequency
+        filtered_tokens = [(token, freq) for token, freq in counter.items() 
+                          if freq >= min_freq]
+        
+        # Sort by frequency (descending) and then alphabetically
+        sorted_tokens = sorted(filtered_tokens, key=lambda x: (-x[1], x[0]))
+        
+        # Create ordered dictionary with special tokens first, then sorted tokens
+        self.stoi = OrderedDict()
+        self.itos = []
+        
+        # Add special tokens
+        for token in self.specials:
+            self.stoi[token] = len(self.stoi)
+            self.itos.append(token)
+            
+        # Add regular tokens
+        for token, _ in sorted_tokens:
+            if token not in self.stoi:
+                self.stoi[token] = len(self.stoi)
+                self.itos.append(token)
+    
+    def __len__(self) -> int:
+        return len(self.stoi)
+    
+    def __getitem__(self, token: str) -> int:
+        """Get index for a token."""
+        return self.stoi.get(token, self.default_index)
+    
+    def __call__(self, tokens: List[str]) -> List[int]:
+        """Convert list of tokens to indices."""
+        return [self[token] for token in tokens]
+    
+    def get_stoi(self) -> Dict[str, int]:
+        """Get string-to-index mapping."""
+        return dict(self.stoi)
+    
+    def get_itos(self) -> List[str]:
+        """Get index-to-string mapping."""
+        return self.itos.copy()
+        
+    def set_default_index(self, index: int) -> None:
+        """Set the default index to return for unknown tokens."""
+        self.default_index = index
+
+
 def build_vocab(
-    iterator, tokenize_fn: Callable, min_freq: int, specials: List[str]
-) -> torch.nn.Module:
+    iterator: Iterator[str], tokenize_fn: Callable, min_freq: int, specials: List[str]
+) -> Vocab:
     """Build vocabulary from iterator."""
-
-    def yield_tokens():
-        for text in iterator:
-            yield tokenize_fn(text)
-
-    vocab = torchtext.vocab.build_vocab_from_iterator(
-        yield_tokens(), min_freq=min_freq, specials=specials
-    )
-    return vocab
+    
+    counter = Counter()
+    for text in iterator:
+        counter.update(tokenize_fn(text))
+    
+    return Vocab(counter, min_freq=min_freq, specials=specials)
 
 
 from transformer.model import subsequent_mask

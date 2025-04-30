@@ -1,10 +1,36 @@
 import torch
-import torchtext
-from torch.utils.data import IterableDataset
+import os
+import urllib.request
+import tarfile
 import spacy
+import hashlib
 from typing import List, Tuple, Dict, Callable, Iterator, Optional
-from torch.utils.data import random_split
+from torch.utils.data import random_split, IterableDataset
 from collections import Counter, OrderedDict
+
+from transformer.model import subsequent_mask
+
+
+def to_map_style_dataset(iter_data):
+    r"""Convert iterable-style dataset to map-style dataset.
+
+    args:
+        iter_data: An iterator type object. Examples include Iterable datasets, string list, text io, generators etc.
+    """
+
+    # Inner class to convert iterable-style to map-style dataset
+    class _MapStyleDataset(torch.utils.data.Dataset):
+        def __init__(self, iter_data) -> None:
+            # TODO Avoid list issue #1296
+            self._data = list(iter_data)
+
+        def __len__(self):
+            return len(self._data)
+
+        def __getitem__(self, idx):
+            return self._data[idx]
+
+    return _MapStyleDataset(iter_data)
 
 
 class TSVTranslationDataset(IterableDataset):
@@ -49,10 +75,12 @@ def tokenize(text: str, nlp: spacy.language.Language) -> List[str]:
 
 class Vocab:
     """Custom vocabulary class to replace torchtext.vocab.Vocab."""
-    
-    def __init__(self, counter: Counter, min_freq: int = 1, specials: Optional[List[str]] = None):
+
+    def __init__(
+        self, counter: Counter, min_freq: int = 1, specials: Optional[List[str]] = None
+    ):
         """Initialize vocabulary from counter and special tokens.
-        
+
         Args:
             counter: Counter object containing token frequencies
             min_freq: Minimum frequency for a token to be included
@@ -61,48 +89,49 @@ class Vocab:
         self.specials = specials if specials is not None else []
         self.min_freq = min_freq
         self.default_index = 0  # Default to first token (usually <unk>)
-        
+
         # Filter tokens by minimum frequency
-        filtered_tokens = [(token, freq) for token, freq in counter.items() 
-                          if freq >= min_freq]
-        
+        filtered_tokens = [
+            (token, freq) for token, freq in counter.items() if freq >= min_freq
+        ]
+
         # Sort by frequency (descending) and then alphabetically
         sorted_tokens = sorted(filtered_tokens, key=lambda x: (-x[1], x[0]))
-        
+
         # Create ordered dictionary with special tokens first, then sorted tokens
         self.stoi = OrderedDict()
         self.itos = []
-        
+
         # Add special tokens
         for token in self.specials:
             self.stoi[token] = len(self.stoi)
             self.itos.append(token)
-            
+
         # Add regular tokens
         for token, _ in sorted_tokens:
             if token not in self.stoi:
                 self.stoi[token] = len(self.stoi)
                 self.itos.append(token)
-    
+
     def __len__(self) -> int:
         return len(self.stoi)
-    
+
     def __getitem__(self, token: str) -> int:
         """Get index for a token."""
         return self.stoi.get(token, self.default_index)
-    
+
     def __call__(self, tokens: List[str]) -> List[int]:
         """Convert list of tokens to indices."""
         return [self[token] for token in tokens]
-    
+
     def get_stoi(self) -> Dict[str, int]:
         """Get string-to-index mapping."""
         return dict(self.stoi)
-    
+
     def get_itos(self) -> List[str]:
         """Get index-to-string mapping."""
         return self.itos.copy()
-        
+
     def set_default_index(self, index: int) -> None:
         """Set the default index to return for unknown tokens."""
         self.default_index = index
@@ -112,15 +141,12 @@ def build_vocab(
     iterator: Iterator[str], tokenize_fn: Callable, min_freq: int, specials: List[str]
 ) -> Vocab:
     """Build vocabulary from iterator."""
-    
+
     counter = Counter()
     for text in iterator:
         counter.update(tokenize_fn(text))
-    
+
     return Vocab(counter, min_freq=min_freq, specials=specials)
-
-
-from transformer.model import subsequent_mask
 
 
 class Batch:
@@ -220,13 +246,16 @@ def create_dataloaders(
     """Create train, validation and test dataloaders."""
 
     def wrap(ds):
+        # Don't shuffle for IterableDataset
+        shuffle = not distributed
+        map_style_ds = to_map_style_dataset(ds)
         return torch.utils.data.DataLoader(
-            ds,
+            map_style_ds,
             batch_size=config.batch_size,
             collate_fn=make_collate_fn(
                 config, tokenizers, vocab_src, vocab_tgt, device, max_len
             ),
-            shuffle=not distributed,
+            shuffle=shuffle,
         )
 
     train_ds, val_ds, test_ds = config.dataset_loader()
@@ -252,31 +281,115 @@ def create_dataloaders(
     return train_dl, val_dl, test_dl
 
 
+def verify_sha256(file_path: str, expected_sha256: str) -> bool:
+    """Verify the SHA-256 hash of a file.
+
+    Args:
+        file_path: Path to the file to verify
+        expected_sha256: Expected SHA-256 hash in hexadecimal string format
+
+    Returns:
+        True if the hash matches, False otherwise
+    """
+    sha256_hash = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        # Read the file in chunks to handle large files
+        for chunk in iter(lambda: f.read(4096), b""):
+            sha256_hash.update(chunk)
+    return sha256_hash.hexdigest() == expected_sha256
+
+
+def download_multi30k(root: str = ".data/datasets/multi30k") -> Dict[str, str]:
+    """Download Multi30k dataset files if they don't exist.
+
+    Args:
+        root: Root directory to store the dataset
+
+    Returns:
+        Dictionary mapping split names to their file paths
+    """
+    base_url = "https://raw.githubusercontent.com/neychev/small_DL_repo/master/datasets/Multi30k"
+    sha256_hashes = {
+        "train": "20140d013d05dd9a72dfde46478663ba05737ce983f478f960c1123c6671be5e",
+        "valid": "a7aa20e9ebd5ba5adce7909498b94410996040857154dab029851af3a866da8c",
+    }
+    urls = {
+        "train": f"{base_url}/training.tar.gz",
+        "valid": f"{base_url}/validation.tar.gz",
+    }
+    file_prefixes = {"train": "train", "valid": "val"}
+
+    # Create root directory if it doesn't exist
+    os.makedirs(root, exist_ok=True)
+
+    file_paths = {}
+    for split in ["train", "valid"]:
+        url = urls[split]
+        tar_path = os.path.join(root, f"{split}.tar.gz")
+
+        # Download if not exists or if hash verification fails
+        if not os.path.exists(tar_path) or not verify_sha256(
+            tar_path, sha256_hashes[split]
+        ):
+            print(f"Downloading {split} dataset...")
+            urllib.request.urlretrieve(url, tar_path)
+
+            # Verify hash after download
+            if not verify_sha256(tar_path, sha256_hashes[split]):
+                raise RuntimeError(
+                    f"SHA-256 hash verification failed for {split}ing dataset. The file may be corrupted."
+                )
+            print(f"SHA-256 hash verification successful for {split}ing dataset.")
+
+        # Store paths to the extracted files
+        prefix = file_prefixes[split]
+        file_paths[split] = {
+            "de": os.path.join(root, f"{prefix}.de"),
+            "en": os.path.join(root, f"{prefix}.en"),
+        }
+
+        # Extract if not already extracted
+        if not os.path.exists(file_paths[split]["de"]) or not os.path.exists(
+            file_paths[split]["en"]
+        ):
+            print(f"Extracting {split} dataset...")
+            with tarfile.open(tar_path, "r:gz") as tar:
+                tar.extractall(path=root)
+
+    return file_paths
+
+
+class Multi30kDataset(IterableDataset):
+    """Dataset for loading Multi30k translation pairs."""
+
+    def __init__(self, de_path: str, en_path: str):
+        self.de_path = de_path
+        self.en_path = en_path
+
+    def __iter__(self):
+        with open(self.de_path, "r", encoding="utf-8") as de_file, open(
+            self.en_path, "r", encoding="utf-8"
+        ) as en_file:
+            for de_line, en_line in zip(de_file, en_file):
+                yield de_line.strip(), en_line.strip()
+
+
 def multi30k_loader():
-    """
-    The code below is a workaround for this code
+    """Load Multi30k dataset for German-English translation.
 
-    train, val, test = datasets.Multi30k(language_pair=("de", "en"))
-    return train, val, test
+    Returns:
+        Tuple of (train_dataset, val_dataset, test_dataset)
     """
-    torchtext.datasets.multi30k.URL["train"] = (
-        "https://raw.githubusercontent.com/neychev/small_DL_repo/master/datasets/Multi30k/training.tar.gz"
-    )
-    torchtext.datasets.multi30k.URL["valid"] = (
-        "https://raw.githubusercontent.com/neychev/small_DL_repo/master/datasets/Multi30k/validation.tar.gz"
-    )
-    torchtext.datasets.multi30k.MD5["train"] = (
-        "20140d013d05dd9a72dfde46478663ba05737ce983f478f960c1123c6671be5e"
-    )
-    torchtext.datasets.multi30k.MD5["valid"] = (
-        "a7aa20e9ebd5ba5adce7909498b94410996040857154dab029851af3a866da8c"
-    )
+    # Download and extract dataset
+    file_paths = download_multi30k()
 
-    train = torchtext.datasets.Multi30k(root=".data", split="train", language_pair=("de", "en"))
-    val = torchtext.datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
-    # TODO: This is not ideal, test dataset should not be identical to validation dataset
-    test = torchtext.datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
-    return train, val, test
+    # Create datasets
+    train_ds = Multi30kDataset(file_paths["train"]["de"], file_paths["train"]["en"])
+    val_ds = Multi30kDataset(file_paths["valid"]["de"], file_paths["valid"]["en"])
+    # For now, use validation set as test set since test set is not publicly available
+    test_ds = Multi30kDataset(file_paths["valid"]["de"], file_paths["valid"]["en"])
+
+    return train_ds, val_ds, test_ds
 
 
 def tatoeba_zh_en_loader(

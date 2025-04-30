@@ -3,8 +3,6 @@ import torchtext
 from torch.utils.data import IterableDataset
 import spacy
 from typing import List, Tuple, Dict, Callable
-from torchtext import datasets
-from torchtext.datasets import multi30k
 from torch.utils.data import random_split
 
 
@@ -202,23 +200,23 @@ def multi30k_loader():
     train, val, test = datasets.Multi30k(language_pair=("de", "en"))
     return train, val, test
     """
-    multi30k.URL["train"] = (
+    torchtext.datasets.multi30k.URL["train"] = (
         "https://raw.githubusercontent.com/neychev/small_DL_repo/master/datasets/Multi30k/training.tar.gz"
     )
-    multi30k.URL["valid"] = (
+    torchtext.datasets.multi30k.URL["valid"] = (
         "https://raw.githubusercontent.com/neychev/small_DL_repo/master/datasets/Multi30k/validation.tar.gz"
     )
-    multi30k.MD5["train"] = (
+    torchtext.datasets.multi30k.MD5["train"] = (
         "20140d013d05dd9a72dfde46478663ba05737ce983f478f960c1123c6671be5e"
     )
-    multi30k.MD5["valid"] = (
+    torchtext.datasets.multi30k.MD5["valid"] = (
         "a7aa20e9ebd5ba5adce7909498b94410996040857154dab029851af3a866da8c"
     )
 
-    train = datasets.Multi30k(root=".data", split="train", language_pair=("de", "en"))
-    val = datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
+    train = torchtext.datasets.Multi30k(root=".data", split="train", language_pair=("de", "en"))
+    val = torchtext.datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
     # TODO: This is not ideal, test dataset should not be identical to validation dataset
-    test = datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
+    test = torchtext.datasets.Multi30k(root=".data", split="valid", language_pair=("de", "en"))
     return train, val, test
 
 

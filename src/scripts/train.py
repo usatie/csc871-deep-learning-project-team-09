@@ -21,12 +21,20 @@ def parse_args():
         action="store_true",
         help="Force retraining even if checkpoint exists",
     )
+    parser.add_argument(
+        "--num-epochs",
+        type=int,
+        default=8,
+        help="Number of epochs to train for (default: 8)",
+    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
     cfg = get_config(args.dataset)
+    # Override number of epochs from command line
+    cfg.num_epochs = args.num_epochs
     print(cfg)
 
     # Check if final checkpoint exists

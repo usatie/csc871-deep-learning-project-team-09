@@ -5,7 +5,7 @@ import torch
 
 from .config.config import TranslationConfig
 from .data.dataset import create_dataloaders, load_tokenizers
-from .utils.training import greedy_decode
+from .training.util import greedy_decode
 from .training.trainer import load_trained_model
 
 

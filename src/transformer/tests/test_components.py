@@ -10,7 +10,7 @@ from transformer.model.transformer import (
     Embeddings,
     Generator,
 )
-from transformer.utils.training import LabelSmoothing
+from transformer.training.util import LabelSmoothing
 from transformer.data.dataset import (
     tokenize,
     make_collate_fn,

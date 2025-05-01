@@ -6,7 +6,7 @@ from .data.dataset import (
     build_vocab,
     create_dataloaders,
 )
-from .utils.training import (
+from .training.util import (
     TrainState,
     LabelSmoothing,
     SimpleLossCompute,

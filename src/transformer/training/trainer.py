@@ -12,7 +12,7 @@ from transformer.data.dataset import (
     build_vocab,
     tokenize,
 )
-from transformer.utils.training import (
+from transformer.training.util import (
     TrainState,
     LabelSmoothing,
     SimpleLossCompute,

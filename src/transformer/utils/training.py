@@ -4,6 +4,7 @@ from typing import Optional
 import torch
 import torch.nn as nn
 from torch.optim.lr_scheduler import LambdaLR
+import torch.distributed as dist
 
 from transformer.model import subsequent_mask
 
@@ -76,6 +77,8 @@ def run_epoch(
     loss_compute: SimpleLossCompute,
     optimizer: torch.optim.Optimizer,
     scheduler: Optional[LambdaLR],
+    rank: int,
+    distributed: bool,
     mode: str = "train",
     accum_iter: int = 1,
     train_state: TrainState = TrainState(),
@@ -112,13 +115,25 @@ def run_epoch(
         if i % 40 == 1 and (mode == "train" or mode == "train+log"):
             lr = optimizer.param_groups[0]["lr"]
             elapsed = time.time() - start
-            print(
-                (
-                    "Epoch Step: %6d | Accumulation Step: %3d | Loss: %6.2f "
-                    + "| Tokens / Sec: %7.1f | Learning Rate: %6.1e"
+            if distributed:
+                dist.reduce(tokens, dst=0)
+                dist.reduce(loss, dst=0)
+                dist.reduce(batch.ntokens, dst=0)
+            if rank == 0:
+                print(
+                    (
+                        "Epoch Step: %6d | Accumulation Step: %3d | Loss: %6.2f "
+                        + "| Tokens / Sec: %7.1f | Tokens: %6d | Learning Rate: %6.1e"
+                    )
+                    % (
+                        i,
+                        n_accum,
+                        loss / batch.ntokens,
+                        tokens / elapsed,
+                        tokens,
+                        lr,
+                    )
                 )
-                % (i, n_accum, loss / batch.ntokens, tokens / elapsed, lr)
-            )
             start = time.time()
             tokens = 0
         del loss

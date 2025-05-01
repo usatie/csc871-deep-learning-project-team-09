@@ -1,6 +1,8 @@
 import argparse
 import os
 
+import torch
+
 from transformer.config.dataset_configs import get_config
 from transformer.training.trainer import train_model
 
@@ -35,6 +37,7 @@ def main():
     cfg = get_config(args.dataset)
     # Override number of epochs from command line
     cfg.num_epochs = args.num_epochs
+    cfg.distributed = torch.cuda.device_count() > 1
     print(cfg)
 
     # Check if final checkpoint exists

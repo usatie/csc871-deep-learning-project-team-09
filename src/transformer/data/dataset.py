@@ -10,6 +10,7 @@ from collections import Counter, OrderedDict
 import torch
 import spacy
 from torch.utils.data import random_split, IterableDataset
+import torch.distributed as dist
 
 # Local imports
 from transformer.model import subsequent_mask
@@ -292,38 +293,31 @@ def create_dataloaders(
         # Don't shuffle for IterableDataset
         shuffle = not distributed
         map_style_dataset = to_map_style_dataset(dataset)
+        sampler = (
+            torch.utils.data.distributed.DistributedSampler(map_style_dataset)
+            if distributed
+            else None
+        )
+        if distributed:
+            world_size = dist.get_world_size()
+            batch_size = config.batch_size // world_size
+        else:
+            batch_size = config.batch_size
         return torch.utils.data.DataLoader(
             map_style_dataset,
-            batch_size=config.batch_size,
+            batch_size=batch_size,
             collate_fn=make_collate_fn(
                 config, tokenizers, vocab_src, vocab_tgt, device, max_len
             ),
             shuffle=shuffle,
-        )
-
-    def wrap_distributed(dataset):
-        map_style_dataset = to_map_style_dataset(dataset)
-        sampler = torch.utils.data.distributed.DistributedSampler(map_style_dataset)
-        dataloader = torch.utils.data.DataLoader(
-            map_style_dataset,
-            batch_size=config.batch_size,
-            collate_fn=make_collate_fn(
-                config, tokenizers, vocab_src, vocab_tgt, device, max_len
-            ),
             sampler=sampler,
         )
-        return dataloader
 
     train_ds, val_ds, test_ds = config.dataset_loader()
 
-    if distributed:
-        train_dl = wrap_distributed(train_ds)
-        val_dl = wrap_distributed(val_ds)
-        test_dl = wrap_distributed(test_ds)
-    else:
-        train_dl = wrap(train_ds)
-        val_dl = wrap(val_ds)
-        test_dl = wrap(test_ds)
+    train_dl = wrap(train_ds)
+    val_dl = wrap(val_ds)
+    test_dl = wrap(test_ds)
 
     return train_dl, val_dl, test_dl
 

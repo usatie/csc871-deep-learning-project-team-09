@@ -55,20 +55,25 @@ def build_vocabularies(cfg: TranslationConfig):
     return src_vocab, tgt_vocab
 
 
+def setup_distributed(rank: int, world_size: int, seed: int):
+    dist.init_process_group(
+        backend="nccl", init_method="env://", world_size=world_size, rank=rank
+    )
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+
+def cleanup_distributed():
+    dist.destroy_process_group()
+
 def train_worker(
-    gpu: int,
-    ngpus_per_node: int,
+    rank: int,
+    world_size: int,
     cfg: TranslationConfig,
     seed: int = 42,
 ):
     """Worker function for distributed training."""
-    torch.cuda.set_device(gpu)
     if cfg.distributed:
-        dist.init_process_group(
-            backend="nccl", init_method="env://", world_size=ngpus_per_node, rank=gpu
-        )
-        torch.manual_seed(seed)
-        torch.cuda.manual_seed(seed)
+        setup_distributed(rank, world_size, seed)
 
     # Load tokenizers
     tokenizers = load_tokenizers(cfg.spacy_models)
@@ -86,10 +91,12 @@ def train_worker(
         h=cfg.h,
         dropout=cfg.dropout,
     )
-    model.cuda(gpu)
+    # Move model to GPU
+    device = f"cuda:{rank}"
+    model.to(device)
     module = model
     if cfg.distributed:
-        model = DDP(model, device_ids=[gpu])
+        model = DDP(model, device_ids=[rank])
         module = model.module
 
     # Create optimizer and scheduler
@@ -105,7 +112,7 @@ def train_worker(
     criterion = LabelSmoothing(
         size=len(tgt_vocab), padding_idx=tgt_vocab["<blank>"], smoothing=cfg.smoothing
     )
-    criterion.cuda(gpu)
+    criterion.to(device)
     loss_compute = SimpleLossCompute(module.generator, criterion)
 
     # Create dataloaders
@@ -114,14 +121,14 @@ def train_worker(
         tokenizers,
         src_vocab,
         tgt_vocab,
-        device=f"cuda:{gpu}",
+        device=f"cuda:{rank}",
         max_len=cfg.max_len,
         distributed=cfg.distributed,
     )
 
     # Training loop
     train_state = TrainState()
-    is_main_process = gpu == 0 or not cfg.distributed
+    is_main_process = rank == 0 or not cfg.distributed
     torch.cuda.empty_cache()
 
     # Create save directory
@@ -133,13 +140,8 @@ def train_worker(
             val_dl.sampler.set_epoch(epoch)
 
         model.train()
-        print(f"[GPU{gpu}] Epoch {epoch} Training ====", flush=True)
-        print(
-            f"Initial GPU memory allocated: {torch.cuda.memory_allocated() / 1e6:.2f} MB"
-        )
-        print(
-            f"Initial GPU memory reserved: {torch.cuda.memory_reserved() / 1e6:.2f} MB"
-        )
+        if rank == 0:
+            print(f"==== Epoch {epoch} Training ====", flush=True)
 
         _, train_state = run_epoch(
             train_dl,
@@ -147,18 +149,34 @@ def train_worker(
             loss_compute,
             optimizer,
             scheduler,
+            rank,
+            cfg.distributed,
             mode="train",
             accum_iter=cfg.accum_iter,
             train_state=train_state,
         )
         torch.cuda.empty_cache()
 
+        if rank == 0:
+            print(f"==== Epoch {epoch} Validation ====", flush=True)
         model.eval()
         with torch.no_grad():
             val_loss, _ = run_epoch(
-                val_dl, model, loss_compute, optimizer, scheduler, mode="eval"
+                val_dl,
+                model,
+                loss_compute,
+                optimizer,
+                scheduler,
+                rank,
+                cfg.distributed,
+                mode="eval",
             )
-            print(val_loss)
+            if cfg.distributed:
+                dist.reduce(val_loss, dst=0)
+            if rank == 0:
+                print(f"Validation Loss: {val_loss}")
+                print("")
+
 
         torch.cuda.empty_cache()
         # Save checkpoint
@@ -182,13 +200,14 @@ def train_worker(
         torch.save(module.state_dict(), final_path)
 
     if cfg.distributed:
-        dist.destroy_process_group()
+        cleanup_distributed()
 
 
 def train_model(cfg: TranslationConfig):
     """Main training function."""
     if cfg.distributed:
         ngpus_per_node = torch.cuda.device_count()
+        print(f"world size: {ngpus_per_node}")
         os.environ["MASTER_ADDR"] = "localhost"
         os.environ["MASTER_PORT"] = cfg.master_port
         mp.spawn(train_worker, nprocs=ngpus_per_node, args=(ngpus_per_node, cfg))

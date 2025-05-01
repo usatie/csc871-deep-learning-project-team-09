@@ -7,5 +7,4 @@ dependencies:
   - spacy=3.8.5
   - pip:
     - torch==2.7.0
-    - GPUtil
     - -e .

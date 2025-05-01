@@ -1,9 +1,3 @@
-torch==2.0.1
-torchtext==0.15.2
-torchdata==0.6.1
+torch==2.7.0
 spacy==3.8.5
-numpy==1.26.4
-pandas==2.2.2
-portalocker==2.8.2
-altair==5.2.0
-GPUtil==1.4.0 
+-e .

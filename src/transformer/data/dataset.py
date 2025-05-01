@@ -16,26 +16,27 @@ from transformer.model import subsequent_mask
 
 
 # Helper functions
+class MapStyleDataset(torch.utils.data.Dataset):
+    """Convert iterable-style dataset to map-style dataset."""
+
+    def __init__(self, iterable_dataset) -> None:
+        # TODO Avoid list issue #1296
+        self._data = list(iterable_dataset)
+
+    def __len__(self):
+        return len(self._data)
+
+    def __getitem__(self, idx):
+        return self._data[idx]
+
+
 def to_map_style_dataset(iterable_dataset):
     r"""Convert iterable-style dataset to map-style dataset.
 
     args:
         iterable_dataset: An iterator type object. Examples include Iterable datasets, string list, text io, generators etc.
     """
-
-    # Inner class to convert iterable-style to map-style dataset
-    class _MapStyleDataset(torch.utils.data.Dataset):
-        def __init__(self, iterable_dataset) -> None:
-            # TODO Avoid list issue #1296
-            self._data = list(iterable_dataset)
-
-        def __len__(self):
-            return len(self._data)
-
-        def __getitem__(self, idx):
-            return self._data[idx]
-
-    return _MapStyleDataset(iterable_dataset)
+    return MapStyleDataset(iterable_dataset)
 
 
 def tokenize(text: str, tokenizer: spacy.language.Language) -> List[str]:
@@ -187,75 +188,99 @@ class Multi30kDataset(IterableDataset):
 
 
 # DataLoader and collation functions
+def collate_fn(batch, config, tokenizers, vocab_src, vocab_tgt, device, max_len=128):
+    """Collate function for DataLoader."""
+    src_bos_id = vocab_src["<s>"]
+    src_eos_id = vocab_src["</s>"]
+    src_pad_id = vocab_src["<blank>"]
+    tgt_bos_id = vocab_src["<s>"]
+    tgt_eos_id = vocab_src["</s>"]
+    tgt_pad_id = vocab_tgt["<blank>"]
+    assert src_bos_id == tgt_bos_id
+    assert src_eos_id == tgt_eos_id
+    assert src_pad_id == tgt_pad_id
+    src_bos_id = torch.tensor([src_bos_id], device=device)  # <s> token id
+    src_eos_id = torch.tensor([src_eos_id], device=device)  # </s> token id
+    tgt_bos_id = torch.tensor([tgt_bos_id], device=device)  # <s> token id
+    tgt_eos_id = torch.tensor([tgt_eos_id], device=device)  # </s> token id
+
+    src_batch, tgt_batch = [], []
+    for src_sample, tgt_sample in batch:
+        # Convert to string if not already
+        src_text = str(src_sample)
+        tgt_text = str(tgt_sample)
+
+        # Tokenize
+        src_tokens = tokenize(src_text, tokenizers[config.src_lang])
+        tgt_tokens = tokenize(tgt_text, tokenizers[config.tgt_lang])
+
+        # Convert tokens to indices
+        src_indices = torch.tensor(
+            vocab_src(src_tokens)[: max_len - 2], dtype=torch.int64, device=device
+        )
+        tgt_indices = torch.tensor(
+            vocab_tgt(tgt_tokens)[: max_len - 2], dtype=torch.int64, device=device
+        )
+
+        src_pad_len = max(0, max_len - len(src_indices) - 2)
+        tgt_pad_len = max(0, max_len - len(tgt_indices) - 2)
+
+        src_batch.append(
+            torch.cat(
+                tensors=[
+                    src_bos_id,
+                    src_indices,
+                    src_eos_id,
+                    torch.full((src_pad_len,), src_pad_id, device=device),
+                ],
+                dim=0,
+            )
+        )
+        tgt_batch.append(
+            torch.cat(
+                tensors=[
+                    tgt_bos_id,
+                    tgt_indices,
+                    tgt_eos_id,
+                    torch.full((tgt_pad_len,), tgt_pad_id, device=device),
+                ],
+                dim=0,
+            )
+        )
+
+    src = torch.stack(src_batch)
+    tgt = torch.stack(tgt_batch)
+
+    # Convert to tensors
+    return Batch(src, tgt, src_pad_id)
+
+
+class CollateFunction:
+    """A class-based collate function that can be pickled."""
+
+    def __init__(self, config, tokenizers, vocab_src, vocab_tgt, device, max_len=128):
+        self.config = config
+        self.tokenizers = tokenizers
+        self.vocab_src = vocab_src
+        self.vocab_tgt = vocab_tgt
+        self.device = device
+        self.max_len = max_len
+
+    def __call__(self, batch):
+        return collate_fn(
+            batch,
+            self.config,
+            self.tokenizers,
+            self.vocab_src,
+            self.vocab_tgt,
+            self.device,
+            self.max_len,
+        )
+
+
 def make_collate_fn(config, tokenizers, vocab_src, vocab_tgt, device, max_len=128):
     """Create collate function for DataLoader."""
-
-    def collate(batch):
-        src_bos_id = vocab_src["<s>"]
-        src_eos_id = vocab_src["</s>"]
-        src_pad_id = vocab_src["<blank>"]
-        tgt_bos_id = vocab_src["<s>"]
-        tgt_eos_id = vocab_src["</s>"]
-        tgt_pad_id = vocab_tgt["<blank>"]
-        assert src_bos_id == tgt_bos_id
-        assert src_eos_id == tgt_eos_id
-        assert src_pad_id == tgt_pad_id
-        src_bos_id = torch.tensor([src_bos_id], device=device)  # <s> token id
-        src_eos_id = torch.tensor([src_eos_id], device=device)  # </s> token id
-        tgt_bos_id = torch.tensor([tgt_bos_id], device=device)  # <s> token id
-        tgt_eos_id = torch.tensor([tgt_eos_id], device=device)  # </s> token id
-
-        src_batch, tgt_batch = [], []
-        for src_sample, tgt_sample in batch:
-            # Convert to string if not already
-            src_text = str(src_sample)
-            tgt_text = str(tgt_sample)
-
-            # Tokenize
-            src_tokens = tokenize(src_text, tokenizers[config.src_lang])
-            tgt_tokens = tokenize(tgt_text, tokenizers[config.tgt_lang])
-
-            # Convert tokens to indices
-            src_indices = torch.tensor(
-                vocab_src(src_tokens)[: max_len - 2], dtype=torch.int64, device=device
-            )
-            tgt_indices = torch.tensor(
-                vocab_tgt(tgt_tokens)[: max_len - 2], dtype=torch.int64, device=device
-            )
-
-            src_pad_len = max(0, max_len - len(src_indices) - 2)
-            tgt_pad_len = max(0, max_len - len(tgt_indices) - 2)
-
-            src_batch.append(
-                torch.cat(
-                    tensors=[
-                        src_bos_id,
-                        src_indices,
-                        src_eos_id,
-                        torch.full((src_pad_len,), src_pad_id, device=device),
-                    ],
-                    dim=0,
-                )
-            )
-            tgt_batch.append(
-                torch.cat(
-                    tensors=[
-                        tgt_bos_id,
-                        tgt_indices,
-                        tgt_eos_id,
-                        torch.full((tgt_pad_len,), tgt_pad_id, device=device),
-                    ],
-                    dim=0,
-                )
-            )
-
-        src = torch.stack(src_batch)
-        tgt = torch.stack(tgt_batch)
-
-        # Convert to tensors
-        return Batch(src, tgt, src_pad_id)
-
-    return collate
+    return CollateFunction(config, tokenizers, vocab_src, vocab_tgt, device, max_len)
 
 
 def create_dataloaders(
@@ -276,25 +301,29 @@ def create_dataloaders(
             shuffle=shuffle,
         )
 
-    train_ds, val_ds, test_ds = config.dataset_loader()
-
-    if distributed:
-        train_sampler = torch.utils.data.distributed.DistributedSampler(train_ds)
-        train_dl = torch.utils.data.DataLoader(
-            train_ds,
+    def wrap_distributed(dataset):
+        map_style_dataset = to_map_style_dataset(dataset)
+        sampler = torch.utils.data.distributed.DistributedSampler(map_style_dataset)
+        dataloader = torch.utils.data.DataLoader(
+            map_style_dataset,
             batch_size=config.batch_size,
             collate_fn=make_collate_fn(
                 config, tokenizers, vocab_src, vocab_tgt, device, max_len
             ),
-            sampler=train_sampler,
-            num_workers=4,
-            pin_memory=True,
+            sampler=sampler,
         )
+        return dataloader
+
+    train_ds, val_ds, test_ds = config.dataset_loader()
+
+    if distributed:
+        train_dl = wrap_distributed(train_ds)
+        val_dl = wrap_distributed(val_ds)
+        test_dl = wrap_distributed(test_ds)
     else:
         train_dl = wrap(train_ds)
-
-    val_dl = wrap(val_ds)
-    test_dl = wrap(test_ds)
+        val_dl = wrap(val_ds)
+        test_dl = wrap(test_ds)
 
     return train_dl, val_dl, test_dl
 

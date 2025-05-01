@@ -163,4 +163,4 @@ def greedy_decode(
         ys = torch.cat(
             [ys, torch.zeros(batch_size, 1).type_as(src.data).fill_(next_word)], dim=1
         )
-    return ys 
+    return ys

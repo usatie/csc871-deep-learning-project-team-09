@@ -62,8 +62,10 @@ def setup_distributed(rank: int, world_size: int, seed: int):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
 
+
 def cleanup_distributed():
     dist.destroy_process_group()
+
 
 def train_worker(
     rank: int,
@@ -176,7 +178,6 @@ def train_worker(
             if rank == 0:
                 print(f"Validation Loss: {val_loss}")
                 print("")
-
 
         torch.cuda.empty_cache()
         # Save checkpoint

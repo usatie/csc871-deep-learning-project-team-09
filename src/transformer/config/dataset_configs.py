@@ -14,7 +14,8 @@ def multi30k_config():
         dataset_loader=multi30k_loader,
         distributed=torch.cuda.device_count() > 1,
         file_prefix="multi30k_de_en",
-        batch_size=32,
+        batch_size=128,
+        accum_iter=int(14.5 / torch.cuda.device_count()),
     )
 
 
@@ -28,7 +29,8 @@ def tatoeba_zh_en_config():
         dataset_loader=tatoeba_zh_en_loader,
         distributed=torch.cuda.device_count() > 1,
         file_prefix="tatoeba_zh_en",
-        batch_size=32,
+        batch_size=128,
+        accum_iter=int(21.0 / torch.cuda.device_count()),
     )
 
 

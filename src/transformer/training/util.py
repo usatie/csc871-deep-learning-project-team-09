@@ -105,37 +105,36 @@ def run_epoch(
             train_state.samples += batch.src.size(0)
             train_state.tokens += batch.ntokens
 
-            if i % accum_iter == 0:
+            if (i + 1) % accum_iter == 0:
                 optimizer.step()
                 optimizer.zero_grad(set_to_none=True)
                 n_accum += 1
                 train_state.accum_step += 1
-            scheduler.step()
+                scheduler.step()
+                if rank == 0:
+                    lr = optimizer.param_groups[0]["lr"]
+                    elapsed = time.time() - start
+                    print(
+                        (
+                            "Epoch Step: %6d | Accumulation Step: %3d | Loss: %6.2f "
+                            + "| Tokens / Sec: %7.1f | Tokens: %6d | Learning Rate: %6.1e"
+                        )
+                        % (
+                            i + 1,
+                            n_accum,
+                            loss / batch.ntokens,
+                            tokens / elapsed,
+                            tokens,
+                            lr,
+                        )
+                    )
+                start = time.time()
+                tokens = 0
 
-        if i % 40 == 1 and (mode == "train" or mode == "train+log"):
-            lr = optimizer.param_groups[0]["lr"]
-            elapsed = time.time() - start
             if distributed:
                 dist.reduce(tokens, dst=0)
                 dist.reduce(loss, dst=0)
                 dist.reduce(batch.ntokens, dst=0)
-            if rank == 0:
-                print(
-                    (
-                        "Epoch Step: %6d | Accumulation Step: %3d | Loss: %6.2f "
-                        + "| Tokens / Sec: %7.1f | Tokens: %6d | Learning Rate: %6.1e"
-                    )
-                    % (
-                        i,
-                        n_accum,
-                        loss / batch.ntokens,
-                        tokens / elapsed,
-                        tokens,
-                        lr,
-                    )
-                )
-            start = time.time()
-            tokens = 0
         del loss
         del loss_node
 

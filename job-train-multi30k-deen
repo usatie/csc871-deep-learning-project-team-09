@@ -1,0 +1,15 @@
+#!/bin/bash -l
+#SBATCH --constraint=gpu
+#SBATCH --qos=debug
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --gpus=4
+#SBATCH --account=m3930
+#SBATCH --time=00:30:00
+#SBATCH --job-name=job-train-multi30k-deen
+#SBATCH --output=log/job-train-multi30k-deen.o%j
+#SBATCH --error=log/job-train-multi30k-deen.e%j
+
+module load python
+conda activate transformer-translation
+python src/scripts/train.py --dataset multi30k --force

@@ -15,7 +15,7 @@ def multi30k_config():
         distributed=torch.cuda.device_count() > 1,
         file_prefix="multi30k_de_en",
         batch_size=128,
-        accum_iter=int(14.5 / torch.cuda.device_count()),
+        accum_iter=14,
     )
 
 
@@ -30,7 +30,7 @@ def tatoeba_zh_en_config():
         distributed=torch.cuda.device_count() > 1,
         file_prefix="tatoeba_zh_en",
         batch_size=128,
-        accum_iter=int(21.0 / torch.cuda.device_count()),
+        accum_iter=21,
     )
 
 

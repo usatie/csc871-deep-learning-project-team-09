@@ -311,6 +311,7 @@ def create_dataloaders(
             ),
             shuffle=shuffle,
             sampler=sampler,
+            drop_last=True,
         )
 
     train_ds, val_ds, test_ds = config.dataset_loader()

@@ -12,4 +12,4 @@
 
 module load python
 conda activate transformer-translation
-python src/scripts/train.py --dataset tatoeba_zh_en --force
+time python src/scripts/train.py --dataset tatoeba_zh_en --force

@@ -111,6 +111,10 @@ def run_epoch(
                 n_accum += 1
                 train_state.accum_step += 1
                 scheduler.step()
+                if distributed:
+                    dist.reduce(tokens, dst=0)
+                    dist.reduce(loss, dst=0)
+                    dist.reduce(batch.ntokens, dst=0)
                 if rank == 0:
                     lr = optimizer.param_groups[0]["lr"]
                     elapsed = time.time() - start
@@ -131,10 +135,6 @@ def run_epoch(
                 start = time.time()
                 tokens = 0
 
-            if distributed:
-                dist.reduce(tokens, dst=0)
-                dist.reduce(loss, dst=0)
-                dist.reduce(batch.ntokens, dst=0)
         del loss
         del loss_node
 

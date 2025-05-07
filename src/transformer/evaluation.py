@@ -30,13 +30,14 @@ def check_outputs(
     """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
-    _, valid_loader, _ = create_dataloaders(
+    train_loader, valid_loader, test_loader = create_dataloaders(
         cfg,
         tokenizers,
         vocab_src,
         vocab_tgt,
         device=device,
     )
+    print_data_stats(cfg.batch_size, train_loader, valid_loader, test_loader)
     pad_id = vocab_tgt["<blank>"]
     eos_token = "</s>"
     results = []
@@ -100,3 +101,42 @@ def run_model_example(
         cfg, model, tokenizers, vocab_src, vocab_tgt, n_examples=n_examples
     )
     return model, example_data
+
+
+def print_data_stats(
+    batch_size, train_loader=None, valid_loader=None, test_loader=None
+):
+    """Print statistics about data loaders including batch counts and sample sizes."""
+    print(f"\n{'='*50}")
+    print(f"DATA SUMMARY:")
+    print(f"{'='*50}")
+
+    total_batches = 0
+
+    if train_loader is not None:
+        train_batches = len(train_loader)
+        total_batches += train_batches
+        train_samples = train_batches * batch_size
+        print(f"Training:   {train_batches:4,} batches", end="")
+        print(f" (~{train_samples:,} samples)")
+
+    if valid_loader is not None:
+        valid_batches = len(valid_loader)
+        total_batches += valid_batches
+        valid_samples = valid_batches * batch_size
+        print(f"Validation: {valid_batches:4,} batches", end="")
+        print(f" (~{valid_samples:,} samples)")
+
+    if test_loader is not None:
+        test_batches = len(test_loader)
+        total_batches += test_batches
+        test_samples = test_batches * batch_size
+        print(f"Testing:    {test_batches:4,} batches", end="")
+        print(f" (~{test_samples:,} samples)")
+
+    print(f"{'-'*50}")
+    print(f"Total:      {total_batches:4,} batches")
+    print(f"Batch size: {batch_size}")
+    print(f"Approx. total samples: {total_batches * batch_size:,}")
+
+    print(f"{'='*50}")

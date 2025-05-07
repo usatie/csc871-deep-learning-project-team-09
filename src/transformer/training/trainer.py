@@ -232,7 +232,56 @@ def load_trained_model(cfg: TranslationConfig, path: str):
         h=cfg.h,
         dropout=cfg.dropout,
     )
+    print_vocab_stats(src_vocab, tgt_vocab)
+    print_model_stats(model)
 
     model.load_state_dict(checkpoint["model"])
 
     return model, src_vocab, tgt_vocab
+
+
+def print_vocab_stats(src_vocab, tgt_vocab):
+    """Print vocabulary statistics."""
+    print(f"\n{'='*50}")
+    print(f"VOCABULARY SUMMARY:")
+    print(f"{'='*50}")
+    print(f"Source vocabulary: {len(src_vocab):,} tokens")
+    print(f"Target vocabulary: {len(tgt_vocab):,} tokens")
+
+
+def print_model_stats(model):
+    """Print model statistics, including parameter counts and memory usage."""
+    # Print overall model statistics
+    total_params = sum(p.numel() for p in model.parameters())
+    total_size_mb = sum(p.numel() * p.element_size() for p in model.parameters()) / (
+        1024 * 1024
+    )
+
+    print(f"\n{'='*50}")
+    print(f"MODEL SUMMARY:")
+    print(f"{'='*50}")
+    print(f"Total parameters: {total_params:,}")
+    print(f"Total size: {total_size_mb:.2f} MB")
+    print(f"{'-'*50}")
+
+    # Group parameters by layer or component
+    groups = {}
+    for name, param in model.named_parameters():
+        parts = name.split(".")
+        group = ".".join(parts[:3])
+
+        if group not in groups:
+            groups[group] = {"params": 0, "size_mb": 0}
+
+        groups[group]["params"] += param.numel()
+        groups[group]["size_mb"] += param.numel() * param.element_size() / (1024 * 1024)
+
+    # Print statistics for each group
+    print(f"PARAMETER DISTRIBUTION:")
+    for group in sorted(groups.keys()):
+        params = groups[group]["params"]
+        size = groups[group]["size_mb"]
+        percent = params / total_params * 100
+        print(f"  {group:<30}: {params:,} params ({percent:.1f}%), {size:.2f} MB")
+
+    print(f"{'='*50}")

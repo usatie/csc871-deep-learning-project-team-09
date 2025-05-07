@@ -11,4 +11,4 @@ setup(
         "GPUtil>=1.4.0",
     ],
     python_requires=">=3.9",
-) 
+)

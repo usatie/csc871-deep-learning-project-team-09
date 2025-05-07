@@ -3,10 +3,15 @@ from typing import List, Tuple
 
 import torch
 
-from transformer.config import TranslationConfig, get_checkpoint_dir, get_checkpoint_files
+from transformer.config import (
+    TranslationConfig,
+    get_checkpoint_dir,
+    get_checkpoint_files,
+)
 from transformer.data.dataset import create_dataloaders, load_tokenizers
-from transformer.training.util import greedy_decode
 from transformer.training.trainer import load_trained_model
+
+from .util import greedy_decode
 
 
 def check_outputs(
@@ -139,4 +144,4 @@ def print_data_stats(
     print(f"Batch size: {batch_size}")
     print(f"Approx. total samples: {total_batches * batch_size:,}")
 
-    print(f"{'='*50}") 
+    print(f"{'='*50}")

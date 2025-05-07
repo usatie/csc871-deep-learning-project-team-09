@@ -11,7 +11,6 @@ from .training.util import (
     SimpleLossCompute,
     rate,
     run_epoch,
-    greedy_decode,
 )
 from .config.config import TranslationConfig, get_default_config
 from .training.trainer import train_model, load_trained_model
@@ -28,7 +27,6 @@ __all__ = [
     "SimpleLossCompute",
     "rate",
     "run_epoch",
-    "greedy_decode",
     "TranslationConfig",
     "get_default_config",
     "train_model",

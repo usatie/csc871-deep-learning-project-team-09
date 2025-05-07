@@ -1,7 +1,7 @@
 import argparse
 
 from transformer.evaluation import run_model_example
-from transformer.config.dataset_configs import get_config
+from transformer.config import get_config, print_config
 
 
 def parse_args():
@@ -18,6 +18,9 @@ def parse_args():
     parser.add_argument(
         "--num_examples", type=int, default=3, help="Number of examples to translate"
     )
+    parser.add_argument(
+        "--num_epochs", type=int, default=8, help="Number of epochs to train for"
+    )
     return parser.parse_args()
 
 
@@ -26,8 +29,8 @@ def main():
     cfg = get_config(args.dataset)
     # Override some settings for inference
     cfg.distributed = False  # Not needed for inference
-    cfg.batch_size = 1  # Single example at a time
-    print(cfg)
+    cfg.num_epochs = args.num_epochs
+    print_config(cfg)
 
     run_model_example(cfg, args.num_examples)
 

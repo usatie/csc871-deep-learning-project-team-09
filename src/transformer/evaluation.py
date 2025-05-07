@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 import torch
 
-from .config.config import TranslationConfig
+from .config import TranslationConfig, get_checkpoint_dir, get_checkpoint_files
 from .data.dataset import create_dataloaders, load_tokenizers
 from .training.util import greedy_decode
 from .training.trainer import load_trained_model
@@ -85,15 +85,15 @@ def run_model_example(
         Tuple of (model, example_data)
     """
     print("Loading model & vocab...")
-    final_checkpoint = os.path.join(
-        "checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt"
-    )
-    if os.path.exists(final_checkpoint):
-        print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
-        model, vocab_src, vocab_tgt = load_trained_model(cfg, final_checkpoint)
-    else:
+    checkpoint_files = get_checkpoint_files(cfg)
+    if not checkpoint_files:
         print("No existing checkpoint found, starting training")
         raise ValueError("No existing checkpoint found, starting training")
+    final_checkpoint = os.path.join(get_checkpoint_dir(cfg), checkpoint_files[-1])
+    print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
+    cfg.batch_size = 1  # We only need to run one example at a time
+
+    model, vocab_src, vocab_tgt = load_trained_model(cfg, final_checkpoint)
     tokenizers = load_tokenizers(cfg.spacy_models)
     model.eval()
     print("Checking model outputs:")

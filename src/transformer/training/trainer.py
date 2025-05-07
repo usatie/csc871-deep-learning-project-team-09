@@ -19,7 +19,11 @@ from transformer.training.util import (
     rate,
     run_epoch,
 )
-from transformer.config.config import TranslationConfig
+from transformer.config import (
+    TranslationConfig,
+    get_checkpoint_path,
+    get_final_checkpoint_path,
+)
 
 
 def ensure_save_dir(cfg: TranslationConfig) -> str:
@@ -192,12 +196,13 @@ def train_worker(
                 "src_vocab": src_vocab,
                 "tgt_vocab": tgt_vocab,
             }
-            checkpoint_path = os.path.join(save_dir, f"epoch_{epoch:02d}.pt")
+            # Create checkpoint filename with hyperparameter information
+            checkpoint_path = get_checkpoint_path(cfg, epoch)
             torch.save(checkpoint, checkpoint_path)
 
     # Save final model
     if is_main_process:
-        final_path = os.path.join(save_dir, "final.pt")
+        final_path = get_final_checkpoint_path(cfg)
         torch.save(module.state_dict(), final_path)
 
     if cfg.distributed:

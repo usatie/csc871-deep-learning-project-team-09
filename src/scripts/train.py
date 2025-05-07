@@ -3,7 +3,7 @@ import os
 
 import torch
 
-from transformer.config.dataset_configs import get_config
+from transformer.config import get_final_checkpoint_path, print_config, get_config
 from transformer.training.trainer import train_model
 
 
@@ -38,13 +38,15 @@ def main():
     # Override number of epochs from command line
     cfg.num_epochs = args.num_epochs
     cfg.distributed = torch.cuda.device_count() > 1
-    print(cfg)
+    print_config(cfg)
 
     # Check if final checkpoint exists
-    final_checkpoint = os.path.join(
-        "checkpoints", cfg.file_prefix, f"epoch_{cfg.num_epochs-1:02d}.pt"
-    )
+    final_checkpoint = get_final_checkpoint_path(cfg)
     if not os.path.exists(final_checkpoint) or args.force:
+        if not args.force:
+            print(f"Training from scratch, no checkpoint found at {final_checkpoint}")
+        else:
+            print(f"Training from scratch, --force flag provided")
         print("Starting training...")
         train_model(cfg)
     else:

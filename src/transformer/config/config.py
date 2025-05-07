@@ -72,3 +72,89 @@ def get_default_config() -> TranslationConfig:
         warmup=3000,
         file_prefix="model_",
     )
+
+
+def get_checkpoint_dir(cfg: TranslationConfig) -> str:
+    return os.path.join("checkpoints", cfg.file_prefix)
+
+
+def get_final_checkpoint_path(cfg: TranslationConfig) -> str:
+    return os.path.join(
+        get_checkpoint_dir(cfg),
+        f"final_bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+    )
+
+
+def get_checkpoint_path(cfg: TranslationConfig, epoch: int) -> str:
+    return os.path.join(
+        get_checkpoint_dir(cfg),
+        f"epoch_{epoch:02d}_bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+    )
+
+
+def get_checkpoint_files(cfg: TranslationConfig) -> List[str]:
+    checkpoint_dir = get_checkpoint_dir(cfg)
+    checkpoint_files = [
+        f
+        for f in os.listdir(checkpoint_dir)
+        if f.endswith(".pt") and f.startswith("epoch_")
+    ]
+    # Filter out files that don't match the current hyperparameters
+    print(f"checkpoint_files: {checkpoint_files}")
+    print(
+        f"filter: {f'bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt'}"
+    )
+    checkpoint_files = [
+        f
+        for f in checkpoint_files
+        if f.endswith(
+            f"bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt"
+        )
+    ]
+    return checkpoint_files
+
+
+def print_config(cfg: TranslationConfig):
+    """Print all configuration parameters in a readable format."""
+    print(f"\n{'='*50}")
+    print(f"CONFIGURATION SUMMARY:")
+    print(f"{'='*50}")
+
+    # Language and tokenizer settings
+    print(f"LANGUAGE SETTINGS:")
+    print(f"  Source language: {cfg.src_lang}")
+    print(f"  Target language: {cfg.tgt_lang}")
+    print(f"  Spacy models: {cfg.spacy_models}")
+
+    # Vocabulary settings
+    print(f"\nVOCABULARY SETTINGS:")
+    print(f"  Minimum frequency: {cfg.min_freq}")
+    print(f"  Special tokens: {', '.join(cfg.specials)}")
+    print(f"  Vocabulary path: {cfg.vocab_path}")
+
+    # Distributed training settings
+    print(f"\nDISTRIBUTED TRAINING:")
+    print(f"  Distributed: {'Enabled' if cfg.distributed else 'Disabled'}")
+    if cfg.distributed:
+        print(f"  Master port: {cfg.master_port}")
+
+    # Model architecture settings
+    print(f"\nMODEL ARCHITECTURE:")
+    print(f"  Layers: {cfg.model_layers}")
+    print(f"  Dimension (d_model): {cfg.d_model}")
+    print(f"  Feed-forward dimension: {cfg.d_ff}")
+    print(f"  Attention heads: {cfg.h}")
+    print(f"  Dropout rate: {cfg.dropout}")
+    print(f"  Label smoothing: {cfg.smoothing}")
+
+    # Training hyperparameters
+    print(f"\nTRAINING HYPERPARAMETERS:")
+    print(f"  Batch size: {cfg.batch_size}")
+    print(f"  Maximum sequence length: {cfg.max_len}")
+    print(f"  Number of epochs: {cfg.num_epochs}")
+    print(f"  Gradient accumulation steps: {cfg.accum_iter}")
+    print(f"  Base learning rate: {cfg.base_lr}")
+    print(f"  Warmup steps: {cfg.warmup}")
+    print(f"  Model file prefix: {cfg.file_prefix}")
+
+    print(f"{'='*50}")

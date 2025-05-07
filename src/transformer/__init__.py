@@ -1,6 +1,5 @@
 from .model.transformer import make_model
 from .data.dataset import (
-    TSVTranslationDataset,
     load_tokenizers,
     tokenize,
     build_vocab,
@@ -20,7 +19,6 @@ from .evaluation import check_outputs, run_model_example
 
 __all__ = [
     "make_model",
-    "TSVTranslationDataset",
     "load_tokenizers",
     "tokenize",
     "build_vocab",

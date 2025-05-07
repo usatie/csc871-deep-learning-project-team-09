@@ -156,23 +156,6 @@ class Batch:
 
 
 # Dataset classes
-class TSVTranslationDataset(IterableDataset):
-    """Dataset for loading translation pairs from TSV files."""
-
-    def __init__(self, path: str, src_col: int = 1, tgt_col: int = 3, sep: str = "\t"):
-        self.path = path
-        self.src_col = src_col
-        self.tgt_col = tgt_col
-        self.sep = sep
-
-    def __iter__(self):
-        with open(self.path, "r", encoding="utf-8") as f:
-            for line in f:
-                parts = line.strip().split(self.sep)
-                if len(parts) > max(self.src_col, self.tgt_col):
-                    yield parts[self.src_col], parts[self.tgt_col]
-
-
 class Multi30kDataset(IterableDataset):
     """Dataset for loading Multi30k translation pairs."""
 
@@ -186,6 +169,34 @@ class Multi30kDataset(IterableDataset):
         ) as en_file:
             for de_line, en_line in zip(de_file, en_file):
                 yield de_line.strip(), en_line.strip()
+
+
+class TatoebaDataset(IterableDataset):
+    """
+    Dataset for loading Tatoeba Chinese-English translation pairs.
+    The dataset is expected to be in TSV format with the following columns:
+    - sentence_id
+    - source
+    - unknown
+    - target
+    """
+
+    def __init__(self, path: str, skip_header: bool):
+        self.skip_header = skip_header
+        self.path = path
+        self.SRC_COL = 1
+        self.TGT_COL = 3
+
+    def __iter__(self):
+        with open(self.path, "r", encoding="utf-8") as f:
+            # Skip header row
+            if self.skip_header:
+                next(f)
+            # Read the rest of the file
+            for line in f:
+                parts = line.strip().split("\t")
+                if len(parts) == 4:  # Ensure we have enough columns
+                    yield parts[self.SRC_COL], parts[self.TGT_COL]
 
 
 # DataLoader and collation functions
@@ -436,31 +447,23 @@ def multi30k_loader():
 
 
 def tatoeba_zh_en_loader(
-    path: str = ".data/datasets/tatoeba/zh_en/Sentence pairs in Mandarin Chinese-English - 2025-04-27.tsv",
-    src_col: int = 1,
-    tgt_col: int = 3,
-    sep: str = "\t",
-    split_ratio: Tuple[float, float, float] = (0.8, 0.1, 0.1),
-    seed: int = 42,
+    train_path: str = ".data/datasets/tatoeba/zh_en/train.tsv",
+    val_path: str = ".data/datasets/tatoeba/zh_en/val.tsv",
+    test_path: str = ".data/datasets/tatoeba/zh_en/test.tsv",
 ):
-    """Load Tatoeba Chinese-English dataset from TSV file."""
-    # Create dataset
-    dataset = TSVTranslationDataset(path, src_col, tgt_col, sep)
+    """Load Tatoeba Chinese-English dataset from pre-split TSV files.
 
-    # Convert to list for splitting
-    data = list(dataset)
+    Args:
+        train_path: Path to training TSV file
+        val_path: Path to validation TSV file
+        test_path: Path to test TSV file
 
-    # Calculate split sizes
-    total_size = len(data)
-    train_size = int(total_size * split_ratio[0])
-    val_size = int(total_size * split_ratio[1])
-    test_size = total_size - train_size - val_size
+    Returns:
+        Tuple of (train_dataset, val_dataset, test_dataset)
+    """
+    # Create datasets from pre-split files
+    train_ds = TatoebaDataset(train_path, skip_header=True)
+    val_ds = TatoebaDataset(val_path, skip_header=True)
+    test_ds = TatoebaDataset(test_path, skip_header=True)
 
-    # Split dataset
-    train_data, val_data, test_data = random_split(
-        data,
-        [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(seed),
-    )
-
-    return train_data, val_data, test_data
+    return train_ds, val_ds, test_ds

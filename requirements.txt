@@ -1,4 +1,5 @@
 torch==2.7.0
 spacy==3.8.5
 pandas==2.2.3
+sacrebleu==2.5.1
 -e .

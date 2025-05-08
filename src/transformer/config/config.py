@@ -35,7 +35,6 @@ class TranslationConfig:
     max_len: int = 72
     num_epochs: int = 8
     accum_iter: int = 10
-    base_lr: float = 1.0
     warmup: int = 3000
     file_prefix: str = "model_"
 
@@ -68,7 +67,6 @@ def get_default_config() -> TranslationConfig:
         max_len=72,
         num_epochs=8,
         accum_iter=10,
-        base_lr=1.0,
         warmup=3000,
         file_prefix="model_",
     )
@@ -81,14 +79,14 @@ def get_checkpoint_dir(cfg: TranslationConfig) -> str:
 def get_final_checkpoint_path(cfg: TranslationConfig) -> str:
     return os.path.join(
         get_checkpoint_dir(cfg),
-        f"final_bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+        f"final_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
     )
 
 
 def get_checkpoint_path(cfg: TranslationConfig, epoch: int) -> str:
     return os.path.join(
         get_checkpoint_dir(cfg),
-        f"epoch_{epoch:02d}_bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+        f"epoch_{epoch:02d}_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
     )
 
 
@@ -100,9 +98,7 @@ def get_checkpoint_files(cfg: TranslationConfig) -> List[str]:
         if f.endswith(".pt") and f.startswith("epoch_")
     ]
     # Filter out files that don't match the current hyperparameters
-    filter_pattern = (
-        f"bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}"
-    )
+    filter_pattern = f"bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}"
     checkpoint_files = [f for f in checkpoint_files if filter_pattern in f]
     # Sort the checkpoint files by epoch number
     # e.g. epoch_01_bs32_acc10_lr1.0_warm3000_ep8.pt
@@ -154,7 +150,6 @@ def print_config(cfg: TranslationConfig):
     print(f"  Maximum sequence length: {cfg.max_len}")
     print(f"  Number of epochs: {cfg.num_epochs}")
     print(f"  Gradient accumulation steps: {cfg.accum_iter}")
-    print(f"  Base learning rate: {cfg.base_lr}")
     print(f"  Warmup steps: {cfg.warmup}")
     print(f"  Model file prefix: {cfg.file_prefix}")
 

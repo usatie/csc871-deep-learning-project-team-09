@@ -101,7 +101,6 @@ def save_training_metrics(
         "d_ff": cfg.d_ff,
         "h": cfg.h,
         "dropout": cfg.dropout,
-        "base_lr": cfg.base_lr,
         "warmup": cfg.warmup,
         "smoothing": cfg.smoothing,
         "max_len": cfg.max_len,
@@ -173,8 +172,9 @@ def train_worker(
         module = model.module
 
     # Create optimizer and scheduler
+    NO_LEARNING_RATE = 0  # Learning rate is set by scheduler
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=cfg.base_lr, betas=(0.9, 0.98), eps=1e-9
+        model.parameters(), lr=NO_LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9
     )
     if checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer"])

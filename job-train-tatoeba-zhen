@@ -5,11 +5,11 @@
 #SBATCH --cpus-per-task=1
 #SBATCH --gpus=4
 #SBATCH --account=m3930
-#SBATCH --time=00:30:00
+#SBATCH --time=01:00:00
 #SBATCH --job-name=job-train-tatoeba-zhen
 #SBATCH --output=log/job-train-tatoeba-zhen.o%j
 #SBATCH --error=log/job-train-tatoeba-zhen.e%j
 
 module load python
 conda activate transformer-translation
-time python src/scripts/train.py --dataset tatoeba_zh_en --force
+time python src/scripts/train.py --dataset tatoeba_zh_en --batch-size 32 --accum-iter 10 --warmup 3000 --num-epochs 100

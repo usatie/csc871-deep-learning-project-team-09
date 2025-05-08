@@ -152,21 +152,18 @@ def run_epoch(
         # Track cumulative loss and tokens
         batch_loss = raw_loss.clone()
         batch_tokens = batch.ntokens.clone()
-
         # Accumulate totals for epoch statistics
         epoch_loss += batch_loss
         epoch_tokens += batch_tokens
-
         # Accumulate values for logging
         accum_loss += batch_loss
         accum_tokens += batch_tokens
-
         if mode == "train" or mode == "train+log":
             # Backward pass for gradient accumulation
             loss_node.backward()
             train_state.step += 1
             train_state.samples += batch.src.size(0)
-            train_state.tokens += batch_tokens
+            train_state.tokens += batch_tokens.item()
             pending_backward += 1  # Increment pending backward counter
 
             # Perform optimizer step after accumulating gradients
@@ -241,7 +238,8 @@ def run_epoch(
                             accum_tokens,
                             epoch_tokens,
                             lr,
-                        )
+                        ),
+                        flush=True,
                     )
 
                 # Reset counters for the next logging window

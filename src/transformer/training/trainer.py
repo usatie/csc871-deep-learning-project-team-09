@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from datetime import datetime
 
 import torch
@@ -81,6 +82,7 @@ def save_training_metrics(
     epoch: int,
     train_loss: float,
     val_loss: float,
+    elapsed: float,
     cfg: TranslationConfig,
 ):
     """Save training metrics and hyperparameters to a JSON file."""
@@ -95,6 +97,7 @@ def save_training_metrics(
         "train_loss": train_loss,
         "val_loss": val_loss,
         "timestamp": datetime.now().isoformat(),
+        "elapsed": elapsed,
     }
 
     # Get hyperparameters from config
@@ -136,12 +139,13 @@ def train_worker(
     """Worker function for distributed training."""
     if cfg.distributed:
         setup_distributed(rank, world_size, seed)
+        # Set device for this process
+        torch.cuda.set_device(rank)
 
     last_checkpoint = get_last_checkpoint(cfg)
     checkpoint = None
     if last_checkpoint:
         last_checkpoint_path = os.path.join(get_checkpoint_dir(cfg), last_checkpoint)
-        print(f"Training from last checkpoint at {last_checkpoint_path}")
         checkpoint = torch.load(last_checkpoint_path, weights_only=False)
         src_vocab, tgt_vocab = checkpoint["src_vocab"], checkpoint["tgt_vocab"]
     else:
@@ -161,6 +165,7 @@ def train_worker(
         h=cfg.h,
         dropout=cfg.dropout,
     )
+
     if checkpoint:
         model.load_state_dict(checkpoint["model"])
 
@@ -185,6 +190,7 @@ def train_worker(
     )
     if checkpoint:
         scheduler.load_state_dict(checkpoint["scheduler"])
+
     # Create loss function
     criterion = LabelSmoothing(
         size=len(tgt_vocab), padding_idx=tgt_vocab["<blank>"], smoothing=cfg.smoothing
@@ -216,9 +222,17 @@ def train_worker(
     else:
         start_epoch = 1
 
-    print(f"Start training from epoch {start_epoch}")
+    if is_main_process:
+        if checkpoint:
+            print(f"Training from last checkpoint at {last_checkpoint_path}")
+        print(f"Start training from epoch {start_epoch}")
+
+    # Synchronize all processes before starting training
+    if cfg.distributed:
+        dist.barrier()
 
     for epoch in range(start_epoch, cfg.num_epochs + 1):
+        start = time.time()
         if cfg.distributed:
             train_dl.sampler.set_epoch(epoch)
             val_dl.sampler.set_epoch(epoch)
@@ -228,13 +242,13 @@ def train_worker(
             print(f"==== Epoch {epoch} Training ====", flush=True)
 
         train_loss, train_state = run_epoch(
-            train_dl,
-            model,
-            loss_compute,
-            optimizer,
-            scheduler,
-            rank,
-            cfg.distributed,
+            data_iter=train_dl,
+            model=model,
+            loss_compute=loss_compute,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            rank=rank,
+            distributed=cfg.distributed,
             mode="train",
             accum_iter=cfg.accum_iter,
             train_state=train_state,
@@ -263,10 +277,11 @@ def train_worker(
                 print("")
 
         # Save metrics and checkpoint
+        elapsed = time.time() - start
         if is_main_process:
             # Save metrics with hyperparameters
             save_training_metrics(
-                save_dir, epoch, train_loss.item(), val_loss.item(), cfg
+                save_dir, epoch, train_loss.item(), val_loss.item(), elapsed, cfg
             )
             # Save checkpoint
             checkpoint = {
@@ -282,6 +297,8 @@ def train_worker(
             # Create checkpoint filename with hyperparameter information
             checkpoint_path = get_checkpoint_path(cfg, epoch)
             torch.save(checkpoint, checkpoint_path)
+        if cfg.distributed:
+            dist.barrier()
         torch.cuda.empty_cache()
 
     # Save final model

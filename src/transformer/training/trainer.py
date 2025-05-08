@@ -1,4 +1,6 @@
 import os
+import json
+from datetime import datetime
 
 import torch
 import torch.distributed as dist
@@ -72,6 +74,57 @@ def setup_distributed(rank: int, world_size: int, seed: int):
 
 def cleanup_distributed():
     dist.destroy_process_group()
+
+
+def save_training_metrics(
+    save_dir: str,
+    epoch: int,
+    train_loss: float,
+    val_loss: float,
+    cfg: TranslationConfig,
+):
+    """Save training metrics and hyperparameters to a JSON file."""
+    metrics_path = os.path.join(save_dir, "training_metrics.json")
+
+    # Get current metrics
+    current_metrics = {
+        "epoch": epoch,
+        "train_loss": train_loss,
+        "val_loss": val_loss,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+    # Get hyperparameters from config
+    hyperparams = {
+        "model_layers": cfg.model_layers,
+        "d_model": cfg.d_model,
+        "d_ff": cfg.d_ff,
+        "h": cfg.h,
+        "dropout": cfg.dropout,
+        "base_lr": cfg.base_lr,
+        "warmup": cfg.warmup,
+        "smoothing": cfg.smoothing,
+        "max_len": cfg.max_len,
+        "num_epochs": cfg.num_epochs,
+        "accum_iter": cfg.accum_iter,
+        "distributed": cfg.distributed,
+        "src_lang": cfg.src_lang,
+        "tgt_lang": cfg.tgt_lang,
+    }
+
+    # Load existing data if file exists
+    if os.path.exists(metrics_path):
+        with open(metrics_path, "r") as f:
+            data = json.load(f)
+    else:
+        data = {"hyperparameters": hyperparams, "metrics": []}
+
+    # Append new metrics
+    data["metrics"].append(current_metrics)
+
+    # Save updated data
+    with open(metrics_path, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 def train_worker(
@@ -208,9 +261,13 @@ def train_worker(
                 print(f"Validation Loss: {val_loss}")
                 print("")
 
-        torch.cuda.empty_cache()
-        # Save checkpoint
+        # Save metrics and checkpoint
         if is_main_process:
+            # Save metrics with hyperparameters
+            save_training_metrics(
+                save_dir, epoch, train_loss.item(), val_loss.item(), cfg
+            )
+            # Save checkpoint
             checkpoint = {
                 "model": module.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -224,6 +281,7 @@ def train_worker(
             # Create checkpoint filename with hyperparameter information
             checkpoint_path = get_checkpoint_path(cfg, epoch)
             torch.save(checkpoint, checkpoint_path)
+        torch.cuda.empty_cache()
 
     # Save final model
     if is_main_process:

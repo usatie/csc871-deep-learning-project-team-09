@@ -92,10 +92,10 @@ def run_model_example(
     print("Loading model & vocab...")
     checkpoint_files = get_checkpoint_files(cfg)
     if not checkpoint_files:
-        print("No existing checkpoint found, starting training")
-        raise ValueError("No existing checkpoint found, starting training")
+        print("No existing checkpoint found, need to train first")
+        raise ValueError("No existing checkpoint found, need to train first")
     final_checkpoint = os.path.join(get_checkpoint_dir(cfg), checkpoint_files[-1])
-    print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
+    print(f"Found existing checkpoint at {final_checkpoint}")
     cfg.batch_size = 1  # We only need to run one example at a time
 
     model, vocab_src, vocab_tgt = load_trained_model(cfg, final_checkpoint)

@@ -100,17 +100,16 @@ def get_checkpoint_files(cfg: TranslationConfig) -> List[str]:
         if f.endswith(".pt") and f.startswith("epoch_")
     ]
     # Filter out files that don't match the current hyperparameters
-    print(f"checkpoint_files: {checkpoint_files}")
-    print(
-        f"filter: {f'bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt'}"
+    filter_pattern = (
+        f"bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}"
     )
-    checkpoint_files = [
-        f
-        for f in checkpoint_files
-        if f.endswith(
-            f"bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt"
-        )
-    ]
+    print(f"filter: {filter_pattern}")
+    checkpoint_files = [f for f in checkpoint_files if filter_pattern in f]
+    # Sort the checkpoint files by epoch number
+    # e.g. epoch_01_bs32_acc10_lr1.0_warm3000_ep8.pt
+    checkpoint_files = sorted(checkpoint_files, key=lambda x: int(x.split("_")[1]))
+    # Print the list each on a new line
+    print(f"checkpoint_files:\n\t{'\n\t'.join(checkpoint_files)}")
     return checkpoint_files
 
 

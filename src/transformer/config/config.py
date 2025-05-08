@@ -79,14 +79,14 @@ def get_checkpoint_dir(cfg: TranslationConfig) -> str:
 def get_final_checkpoint_path(cfg: TranslationConfig) -> str:
     return os.path.join(
         get_checkpoint_dir(cfg),
-        f"final_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+        f"final_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}.pt",
     )
 
 
 def get_checkpoint_path(cfg: TranslationConfig, epoch: int) -> str:
     return os.path.join(
         get_checkpoint_dir(cfg),
-        f"epoch_{epoch:02d}_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}_ep{cfg.num_epochs}.pt",
+        f"epoch_{epoch:02d}_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}.pt",
     )
 
 

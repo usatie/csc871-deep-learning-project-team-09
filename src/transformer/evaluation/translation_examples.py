@@ -91,7 +91,7 @@ def run_model_example(
     print("Loading model & vocab...")
     checkpoint_path = get_checkpoint_path(cfg, cfg.num_epochs)
     if not os.path.exists(checkpoint_path):
-        raise ValueError("No existing checkpoint found, need to train first")
+        raise ValueError(f"No existing checkpoint found at {checkpoint_path}, need to train first")
     print(f"Found existing checkpoint at {checkpoint_path}")
     cfg.batch_size = 1  # We only need to run one example at a time
 

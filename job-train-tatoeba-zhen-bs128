@@ -1,0 +1,14 @@
+#!/bin/bash -l
+#SBATCH --constraint=gpu
+#SBATCH --qos=regular
+#SBATCH --nodes=1
+#SBATCH --gpus=4
+#SBATCH --account=m3930
+#SBATCH --time=02:00:00
+#SBATCH --job-name=job-train-tatoeba-zhen-bs128
+#SBATCH --output=log/job-train-tatoeba-zhen-bs128.o%j
+#SBATCH --error=log/job-train-tatoeba-zhen-bs128.e%j
+
+module load python
+conda activate transformer-translation
+time python src/scripts/train.py --dataset tatoeba_zh_en --batch-size 128 --accum-iter 21 --warmup 3000 --num-epochs 100

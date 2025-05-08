@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from transformer.training.util import subsequent_mask
+from transformer.model import subsequent_mask
 
 
 def greedy_decode(

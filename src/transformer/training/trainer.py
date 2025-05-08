@@ -146,10 +146,10 @@ def train_worker(
             val_dl.sampler.set_epoch(epoch)
 
         model.train()
-        if rank == 0:
+        if is_main_process:
             print(f"==== Epoch {epoch} Training ====", flush=True)
 
-        _, train_state = run_epoch(
+        train_loss, train_state = run_epoch(
             train_dl,
             model,
             loss_compute,
@@ -163,7 +163,9 @@ def train_worker(
         )
         torch.cuda.empty_cache()
 
-        if rank == 0:
+        if is_main_process:
+            # Training loss is already reduced by run_epoch function
+            print(f"Training Loss: {train_loss}", flush=True)
             print(f"==== Epoch {epoch} Validation ====", flush=True)
         model.eval()
         with torch.no_grad():
@@ -177,9 +179,8 @@ def train_worker(
                 cfg.distributed,
                 mode="eval",
             )
-            if cfg.distributed:
-                dist.reduce(val_loss, dst=0)
-            if rank == 0:
+            # Validation loss is already reduced by run_epoch function
+            if is_main_process:
                 print(f"Validation Loss: {val_loss}")
                 print("")
 

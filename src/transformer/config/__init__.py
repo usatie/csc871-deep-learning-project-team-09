@@ -6,6 +6,7 @@ from .config import (
     get_checkpoint_dir,
     print_config,
     get_checkpoint_files,
+    get_last_checkpoint,
 )
 from .dataset_configs import get_config
 
@@ -18,4 +19,5 @@ __all__ = [
     "print_config",
     "get_config",
     "get_checkpoint_files",
+    "get_last_checkpoint",
 ]

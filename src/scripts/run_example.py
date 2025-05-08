@@ -16,10 +16,10 @@ def parse_args():
         help="Dataset to use for translation",
     )
     parser.add_argument(
-        "--num_examples", type=int, default=3, help="Number of examples to translate"
+        "--num-examples", type=int, default=3, help="Number of examples to translate"
     )
     parser.add_argument(
-        "--num_epochs", type=int, default=8, help="Number of epochs to train for"
+        "--num-epochs", type=int, default=8, help="Number of epochs to train for"
     )
     return parser.parse_args()
 

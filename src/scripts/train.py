@@ -1,9 +1,11 @@
 import argparse
-import os
-
 import torch
 
-from transformer.config import get_final_checkpoint_path, print_config, get_config
+from transformer.config import (
+    get_checkpoint_files,
+    print_config,
+    get_config,
+)
 from transformer.training.trainer import train_model
 
 
@@ -41,16 +43,20 @@ def main():
     print_config(cfg)
 
     # Check if final checkpoint exists
-    final_checkpoint = get_final_checkpoint_path(cfg)
-    if not os.path.exists(final_checkpoint) or args.force:
-        if not args.force:
-            print(f"Training from scratch, no checkpoint found at {final_checkpoint}")
-        else:
-            print(f"Training from scratch, --force flag provided")
-        print("Starting training...")
+    checkpoint_files = get_checkpoint_files(cfg)
+    # Print the list each on a new line
+    print(f"checkpoint_files:\n\t{'\n\t'.join(checkpoint_files)}")
+    final_checkpoint = next(
+        filter(lambda x: f"epoch_{cfg.num_epochs:02d}" in x, checkpoint_files), None
+    )
+    if args.force:
+        print(f"Training from scratch, --force flag provided")
         train_model(cfg)
-    else:
+    elif final_checkpoint is not None:
         print(f"Found existing checkpoint at {final_checkpoint}, skipping training")
+    else:
+        print(f"Start training...")
+        train_model(cfg)
 
 
 if __name__ == "__main__":

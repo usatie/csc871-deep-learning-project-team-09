@@ -1,9 +1,10 @@
+import os
+
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import LambdaLR
-import os
 
 from transformer.model.transformer import make_model
 from transformer.data.dataset import (
@@ -23,6 +24,8 @@ from transformer.config import (
     TranslationConfig,
     get_checkpoint_path,
     get_final_checkpoint_path,
+    get_last_checkpoint,
+    get_checkpoint_dir,
 )
 
 
@@ -81,11 +84,19 @@ def train_worker(
     if cfg.distributed:
         setup_distributed(rank, world_size, seed)
 
+    last_checkpoint = get_last_checkpoint(cfg)
+    checkpoint = None
+    if last_checkpoint:
+        last_checkpoint_path = os.path.join(get_checkpoint_dir(cfg), last_checkpoint)
+        print(f"Training from last checkpoint at {last_checkpoint_path}")
+        checkpoint = torch.load(last_checkpoint_path, weights_only=False)
+        src_vocab, tgt_vocab = checkpoint["src_vocab"], checkpoint["tgt_vocab"]
+    else:
+        # Build vocabularies
+        src_vocab, tgt_vocab = build_vocabularies(cfg)
+
     # Load tokenizers
     tokenizers = load_tokenizers(cfg.spacy_models)
-
-    # Build vocabularies
-    src_vocab, tgt_vocab = build_vocabularies(cfg)
 
     # Create model
     model = make_model(
@@ -97,6 +108,9 @@ def train_worker(
         h=cfg.h,
         dropout=cfg.dropout,
     )
+    if checkpoint:
+        model.load_state_dict(checkpoint["model"])
+
     # Move model to GPU
     device = f"cuda:{rank}"
     model.to(device)
@@ -109,11 +123,14 @@ def train_worker(
     optimizer = torch.optim.Adam(
         model.parameters(), lr=cfg.base_lr, betas=(0.9, 0.98), eps=1e-9
     )
+    if checkpoint:
+        optimizer.load_state_dict(checkpoint["optimizer"])
     scheduler = LambdaLR(
         optimizer,
         lambda step: rate(step, cfg.d_model, factor=1, warmup=cfg.warmup),
     )
-
+    if checkpoint:
+        scheduler.load_state_dict(checkpoint["scheduler"])
     # Create loss function
     criterion = LabelSmoothing(
         size=len(tgt_vocab), padding_idx=tgt_vocab["<blank>"], smoothing=cfg.smoothing
@@ -133,14 +150,21 @@ def train_worker(
     )
 
     # Training loop
-    train_state = TrainState()
+    train_state = TrainState() if checkpoint else checkpoint["train_state"]
     is_main_process = rank == 0 or not cfg.distributed
     torch.cuda.empty_cache()
 
     # Create save directory
     save_dir = ensure_save_dir(cfg)
 
-    for epoch in range(cfg.num_epochs):
+    if checkpoint:
+        start_epoch = checkpoint["epoch"] + 1
+    else:
+        start_epoch = 1
+
+    print(f"Start training from epoch {start_epoch}")
+
+    for epoch in range(start_epoch, cfg.num_epochs + 1):
         if cfg.distributed:
             train_dl.sampler.set_epoch(epoch)
             val_dl.sampler.set_epoch(epoch)

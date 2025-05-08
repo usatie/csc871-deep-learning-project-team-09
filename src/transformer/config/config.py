@@ -103,14 +103,16 @@ def get_checkpoint_files(cfg: TranslationConfig) -> List[str]:
     filter_pattern = (
         f"bs{cfg.batch_size}_acc{cfg.accum_iter}_lr{cfg.base_lr}_warm{cfg.warmup}"
     )
-    print(f"filter: {filter_pattern}")
     checkpoint_files = [f for f in checkpoint_files if filter_pattern in f]
     # Sort the checkpoint files by epoch number
     # e.g. epoch_01_bs32_acc10_lr1.0_warm3000_ep8.pt
     checkpoint_files = sorted(checkpoint_files, key=lambda x: int(x.split("_")[1]))
-    # Print the list each on a new line
-    print(f"checkpoint_files:\n\t{'\n\t'.join(checkpoint_files)}")
     return checkpoint_files
+
+
+def get_last_checkpoint(cfg: TranslationConfig) -> str:
+    checkpoint_files = get_checkpoint_files(cfg)
+    return checkpoint_files[-1] if checkpoint_files else None
 
 
 def print_config(cfg: TranslationConfig):

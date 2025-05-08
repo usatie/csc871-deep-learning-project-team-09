@@ -31,6 +31,22 @@ def parse_args():
         default=8,
         help="Number of epochs to train for (default: 8)",
     )
+    # Training hyperparameters
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        help="Batch size (default: from config)",
+    )
+    parser.add_argument(
+        "--accum-iter",
+        type=int,
+        help="Gradient accumulation steps (default: from config)",
+    )
+    parser.add_argument(
+        "--warmup",
+        type=int,
+        help="Number of warmup steps (default: from config)",
+    )
     return parser.parse_args()
 
 
@@ -40,6 +56,15 @@ def main():
     # Override number of epochs from command line
     cfg.num_epochs = args.num_epochs
     cfg.distributed = torch.cuda.device_count() > 1
+
+    # Override other hyperparameters if specified
+    if args.batch_size is not None:
+        cfg.batch_size = args.batch_size
+    if args.accum_iter is not None:
+        cfg.accum_iter = args.accum_iter
+    if args.warmup is not None:
+        cfg.warmup = args.warmup
+
     print_config(cfg)
 
     # Check if final checkpoint exists

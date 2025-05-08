@@ -84,7 +84,10 @@ def save_training_metrics(
     cfg: TranslationConfig,
 ):
     """Save training metrics and hyperparameters to a JSON file."""
-    metrics_path = os.path.join(save_dir, "training_metrics.json")
+    metrics_filename = (
+        f"training_metrics_bs{cfg.batch_size}_acc{cfg.accum_iter}_warm{cfg.warmup}.json"
+    )
+    metrics_path = os.path.join(save_dir, metrics_filename)
 
     # Get current metrics
     current_metrics = {
@@ -101,14 +104,12 @@ def save_training_metrics(
         "d_ff": cfg.d_ff,
         "h": cfg.h,
         "dropout": cfg.dropout,
-        "warmup": cfg.warmup,
         "smoothing": cfg.smoothing,
         "max_len": cfg.max_len,
         "num_epochs": cfg.num_epochs,
+        "batch_size": cfg.batch_size,
         "accum_iter": cfg.accum_iter,
-        "distributed": cfg.distributed,
-        "src_lang": cfg.src_lang,
-        "tgt_lang": cfg.tgt_lang,
+        "warmup": cfg.warmup,
     }
 
     # Load existing data if file exists
@@ -172,9 +173,9 @@ def train_worker(
         module = model.module
 
     # Create optimizer and scheduler
-    NO_LEARNING_RATE = 0  # Learning rate is set by scheduler
+    BASE_LEARNING_RATE = 1  # Learning rate is set by scheduler
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=NO_LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9
+        model.parameters(), lr=BASE_LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9
     )
     if checkpoint:
         optimizer.load_state_dict(checkpoint["optimizer"])
@@ -203,7 +204,7 @@ def train_worker(
     )
 
     # Training loop
-    train_state = TrainState() if checkpoint else checkpoint["train_state"]
+    train_state = checkpoint["train_state"] if checkpoint else TrainState()
     is_main_process = rank == 0 or not cfg.distributed
     torch.cuda.empty_cache()
 

@@ -46,7 +46,7 @@ def check_outputs(
     eos_token = "</s>"
     results = []
 
-    it = iter(valid_loader)
+    it = iter(test_loader)
     for idx in range(n_examples):
         batch = next(it)
 

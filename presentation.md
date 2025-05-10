@@ -35,13 +35,16 @@ def translate(model, src_tokens):
 ## Dataset
 
 - Tatoeba Chinese-English Parallel Corpus (obtained April 27, 2025)
-  - https://tatoeba.org/
 - Number of sentence pairs: 71,155 total
 - Number of unique source sentences: 60,260 total
 - Multiple target translations per source sentence
     ![bg_down](https://cdn.markslides.ai/users/1557/images/ONBsLiPafYnUg29RRDGJH)
 - Continuously being updated by users globally
 - CC BY 2.0 License
+
+<!--
+footer: "https://tatoeba.org/"
+-->
 
 ---
 
@@ -55,11 +58,14 @@ def translate(model, src_tokens):
   | Training   | 48,208 (80.00%) | 56,830 pairs (79.87%)|
   | Validation | 6,026 (10.00%)  | 7,166 pairs (10.07%) |
   | Test       | 6,026 (10.00%)  | 7,159 pairs (10.06%) |
+<!--
+footer: ""
+-->
 
 ---
 
 ## Pre-processing
-- Spacy tokenizers (https://spacy.io/)
+- Spacy tokenizers
   - zh_core_web_sm for Chinese, en_core_web_sm for English
 - Max sequence length: 72 tokens
 - Vocabulary sizes:
@@ -68,9 +74,17 @@ def translate(model, src_tokens):
   - Included words appearing at least 2 times in either train/val/test
   - 4 special tokens: `<s>`, `</s>`, `<unk>`, `<pad>`
 
+<!--
+footer: "https://spacy.io/"
+-->
 
 ---
+<!--
+footer: ""
+-->
+
 # Implementation
+
 ---
 
 ## Implementation: Model Architecture
@@ -173,10 +187,10 @@ def translate(model, src_tokens):
 - Helps regularize the model
 - Label smoothing = 0.1 used in our implementation
 
-  | Label   |  class 1  |  class 2 | class 3|
+  | Label      |  class 1   |  class 2   | class 3    |
   |------------|------------|------------|------------|
-  | Hard Label | 0| 0|1 |
-  | Smoothed Label | 0.05| 0.05|0.9|
+  | Hard Label | 0          | 0          | 1          |
+  | Smoothed Label | 0.05    | 0.05      | 0.9        |
 
 ---
 
@@ -239,28 +253,28 @@ def translate(model, src_tokens):
   - 25 GB/s/direction per link
 
 ---
-
+## Training/Validation Loss
+![bg right:60% w:720](https://cdn.markslides.ai/users/1557/images/_k3d43Qt3KFBpHZudRvz0)
+- Training loss continuously decreases
+- Validation loss exhibit plateau (then even increases)
+- Gap between train/val loss indicates overfitting
+---
 ## Training Results (Config 1)
-<!-- TODO: Replace with loss curve -->
-![bg right](https://images.unsplash.com/photo-1543286386-713bdd548da4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w1NTU5NjN8MHwxfHNlYXJjaHwxfHxncmFwaHxlbnwwfHx8fDE3NDY4MzI2NTR8MA&ixlib=rb-4.1.0&q=85)
 
 - Batch size 128, Accumulation steps 21
 - Tokens/accum : approx. 25,000
 - 100 epochs completed
-- Gap between train/val loss indicates overfitting
+- Total Accumulation steps 2200
 
 ---
 
 ## Evaluation: Training Results (Config 2)
-<!-- TODO: Replace with loss curve -->
-![bg right](https://images.unsplash.com/photo-1543286386-713bdd548da4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w1NTU5NjN8MHwxfHNlYXJjaHwxfHxncmFwaHxlbnwwfHx8fDE3NDY4MzI2NTR8MA&ixlib=rb-4.1.0&q=85)
-
 
 - Batch size 32, Accumulation steps 10
 - Tokens/accum : approx. 4,000
 - 54 epochs completed
   - Stopped early because it took very long and it was obvious that it was overfitting
-- Gap between train/val loss indicates overfitting
+- Total Accumulation steps 9612
 
 ---
 
@@ -304,6 +318,19 @@ def translate(model, src_tokens):
   - Insufficient regularization
   - Limited dataset size
   - Short sentence pairs
+
+---
+
+## Overfitting Analysis : Sentence Length
+| Dataset     | Avg.     | Med.     | std.     |
+|-------------|----------|----------|----------|
+| Tatoeba zh  | 10.75    | 10.0     | 6.02     |
+| Tatoeba en  | 6.76     | 6.0      | 3.72     |
+| WMT14 de    | 21.31    | 19.00    | 13.34    |
+| WMT14 en    | 22.98    | 20.00    | 15.01    |
+
+![bg right vertical h:240](https://cdn.markslides.ai/users/1557/images/FUDfHgPCmqdAlL4O1vIF3)
+![bg right h:240](https://cdn.markslides.ai/users/1557/images/63uhgmOY8GaViL6zVbOG4)
 
 ---
 

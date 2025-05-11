@@ -2,6 +2,13 @@
 A Chinese–English Translation Case Study
 
 ---
+## Overview
+- Motivation
+- Data Preparation
+- Implementation
+- Training Process
+- Evaluation
+---
 
 ## What is Machine Translation?
 
@@ -79,6 +86,11 @@ footer: "https://spacy.io/"
 -->
 
 ---
+# Comparison of Datasets and Methods
+
+![down](https://cdn.markslides.ai/users/1657/images/VCleOKaLnzqg0FVFfZYT7)
+
+---
 <!--
 footer: ""
 -->
@@ -96,7 +108,12 @@ footer: ""
   - Using spacy's tokenizers instead of BPE
   - Greedy search instead of beam search
   - No checkpoint ensembling (using single best checkpoint)
+
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
 ---
+
 
 ## Architecture Details
 
@@ -109,46 +126,101 @@ footer: ""
 
 ---
 
-## Architecture Components
+## Architecture
 
-- Embedding layers (separate for source/target)
-- Multi-head Attention mechanisms
-- Subsequent mask
-- Positional Encoding 
-- Feedforward layers
-- Dropout and Layer Normalization
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <div style="flex: 1;">
+    <img src="https://cdn.markslides.ai/users/1657/images/cLwUK-0TGD7dGxinYQl4-" width="400px" alt="Left Image">
+  </div>
+  <div style="flex: 3;">
+    <img src="https://cdn.markslides.ai/users/1657/images/n-75Am3WPaIBOSeDcfK0k" width="1000px" alt="Right Image">
+  </div>
+</div>
+
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
+
 
 ---
 
-## Embedding Layer
-- TODO
+## EncoderLayer
+
+<div style="display: flex; justify-content: space-between;  gap: 16px;align-items: center;">
+  <div style="flex: 1; text-align: center;">
+    <img src="https://cdn.markslides.ai/users/1657/images/WX6O4UBZFzg8opCI53pyc" width="500px" alt="Left Image">
+  </div>
+  <div style="flex: 1; text-align: center;">
+    <img src="https://cdn.markslides.ai/users/1657/images/YhqYd-yxWXUCK8NFR-JKP" width="500px"  alt="Right Image">
+  </div>
+</div>
+
+---
+
+## DecoderLayer
+
+<div style="display: flex; justify-content: space-between;  gap: 16px;align-items: center;">
+  <div style="flex: 1; text-align: center;">
+    <img src="https://cdn.markslides.ai/users/1657/images/rFPvLjP_jMYsfL0nkfrNQ" width="500px" alt="Left Image">
+  </div>
+  <div style="flex: 1; text-align: center;">
+    <img src="https://cdn.markslides.ai/users/1657/images/BxcLItz1XWXqikwDpD0xL" width="500px"  alt="Right Image">
+  </div>
+</div>
 
 ---
 
 ## Multi-head Attention
-- TODO
 
----
+<div style="display: flex; align-items: flex-start; gap: 20px;">
 
-## Subsequent mask for decoder
-- TODO
+<!-- Left: Steps with code -->
+<div style="flex: 1;">
 
----
+- **Step 1**: Linear projection of `query`, `key`, and `value`  
+  ```python
+  query, key, value = [
+      lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+      for lin, x in zip(self.linears, (query, key, value))
+  ]
+- **Step 2**: Scaled dot-product attention
+```scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)```
+- **Step 3**: Concatenate and apply final linear layer
 
-## Positional Encoding 
-- TODO
+  ```x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h * self.d_k)```
+
+
 
 ---
 
 ## Feedforward layers
-- TODO
+
+input (d_model) → Linear(d_ff) → ReLU → Dropout → Linear(d_model)
+
+<div style="display: flex; align-items: center; gap: 20px;">
+
+  <!-- Left: Centered Image -->
+  <img src="https://cdn.markslides.ai/users/1657/images/EhXXnJuJ9BhAiAdCh7h4a" alt="Feedforward Diagram" style="width: 250px; display: block;" />
+
+  <!-- Right: Code Block -->
+  <pre><code class="language-python">
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = nn.Linear(d_model, d_ff)
+        self.w_2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        return self.w_2(self.dropout(torch.relu(self.w_1(x))))
+  </code></pre>
+
+</div>
+
+
 
 ---
 
-## Dropout and Layer Normalization
-- TODO
-
----
 # Training
 ---
 
@@ -295,15 +367,20 @@ footer: ""
 ---
 
 ## Encoder Self Attention Visualization
-- TODO: Add
+
+
+<img src="https://cdn.markslides.ai/users/1657/images/RO0A7Ppdq2NZc5mfJ82J8" width="850px" height="450px" alt="Encoder Self Attention" style="display: block; margin-left: auto; margin-right: auto;">
+
 ---
 
 ## Decoder Self Attention Visualization
-- TODO: Add
+
+<img src="https://cdn.markslides.ai/users/1657/images/2u2Xl9Le8HfKmpDVN5Ycg" width="850px" height="450px" alt="Decoder Self Attention" style="display: block; margin-left: auto; margin-right: auto;">
+
 ---
 
 ## Decoder Cross(src) Attention Visualization
-- TODO: Add
+<img src="https://cdn.markslides.ai/users/1657/images/6mRDV6qriLe4eXwMjs2Ql" width="850px" height="450px" alt="Decoder-Encoder Cross Attention" style="display: block; margin-left: auto; margin-right: auto;">g
 
 ---
 
@@ -321,16 +398,16 @@ footer: ""
 
 ---
 
-## Overfitting Analysis : Sentence Length
+## Overfitting Analysis : Sentence Length (number of tokens in sentence)
 | Dataset     | Avg.     | Med.     | std.     |
 |-------------|----------|----------|----------|
-| Tatoeba zh  | 10.75    | 10.0     | 6.02     |
-| Tatoeba en  | 6.76     | 6.0      | 3.72     |
-| WMT14 de    | 21.31    | 19.00    | 13.34    |
-| WMT14 en    | 22.98    | 20.00    | 15.01    |
+| Tatoeba zh  | 7.55    | 7.0    |3.98     |
+| Tatoeba en  | 8.22    |7.0     | 4.20     |
+| WMT14 de    | 28.12    | 24.00   |20.77   |
+| WMT14 en    | 28.09    | 24.00    | 24.50    |
 
-![bg right vertical h:240](https://cdn.markslides.ai/users/1557/images/FUDfHgPCmqdAlL4O1vIF3)
-![bg right h:240](https://cdn.markslides.ai/users/1557/images/63uhgmOY8GaViL6zVbOG4)
+![bg right vertical h:280](https://cdn.markslides.ai/users/1657/images/iB5VUlz1aAQJxVy0tvpsp)
+![bg right h:280](https://cdn.markslides.ai/users/1657/images/tU-5wRaQculcWIryIUYgq)
 
 ---
 

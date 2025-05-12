@@ -17,10 +17,6 @@ chunk_size = 10000
 
 
 
-if os.path.exists(tokenizer_path):
-    tokenizer = Tokenizer.from_file(tokenizer_path)
-else:
-    print(f"Tokenizer file does not exist at {tokenizer_path}")
 
 
 # 1. Train BPE tokenizer on part of your corpus (do this once and reuse)

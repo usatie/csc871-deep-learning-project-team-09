@@ -118,6 +118,7 @@ def run_epoch(
     mode: str = "train",
     accum_iter: int = 1,
     train_state: TrainState = TrainState(),
+    timing_stats=None,
 ) -> Tuple[float, TrainState]:
     """
     Train or evaluate a single epoch
@@ -133,6 +134,7 @@ def run_epoch(
         mode: 'train', 'train+log', or 'eval'
         accum_iter: Number of batches for gradient accumulation
         train_state: Current training state
+        timing_stats: Optional TimingStats object to track timing of operations
 
     Returns:
         Tuple of (normalized loss, updated train state)
@@ -143,12 +145,28 @@ def run_epoch(
     accum_tokens = 0
     accum_loss = 0
     pending_backward = 0  # Initialize pending backward counter
+    
+    # Start timing data iteration if timing_stats is provided
+        
     for i, batch in enumerate(data_iter):
+        # End data iteration timer and start forward pass timer
+        if timing_stats is not None:
+            timing_stats.start_timer("forward_pass")
+            
         out = model.forward(batch.src, batch.tgt, batch.src_mask, batch.tgt_mask)
 
+        # End forward pass timer and start loss computation timer
+        if timing_stats is not None:
+            timing_stats.end_timer("forward_pass")
+            timing_stats.start_timer("loss_computation")
+            
         # Get both raw loss and normalized loss node for backprop
         raw_loss, loss_node = loss_compute(out, batch.tgt_y, batch.ntokens)
 
+        # End loss computation timer
+        if timing_stats is not None:
+            timing_stats.end_timer("loss_computation")
+            
         # Track cumulative loss and tokens
         batch_loss = raw_loss.clone()
         batch_tokens = batch.ntokens.clone()
@@ -159,8 +177,17 @@ def run_epoch(
         accum_loss += batch_loss
         accum_tokens += batch_tokens
         if mode == "train" or mode == "train+log":
+            # Start backward pass timer
+            if timing_stats is not None:
+                timing_stats.start_timer("backward_pass")
+                
             # Backward pass for gradient accumulation
             loss_node.backward()
+            
+            # End backward pass timer
+            if timing_stats is not None:
+                timing_stats.end_timer("backward_pass")
+                
             train_state.step += 1
             train_state.samples += batch.src.size(0)
             train_state.tokens += batch_tokens.item()
@@ -265,6 +292,9 @@ def run_epoch(
 
         epoch_loss = reduced_epoch_loss
         epoch_tokens = reduced_epoch_tokens
+        
+        if timing_stats is not None:
+            timing_stats.end_timer("final_reduction")
 
     # Compute normalized loss for the entire epoch
     normalized_loss = epoch_loss / epoch_tokens if epoch_tokens > 0 else 0

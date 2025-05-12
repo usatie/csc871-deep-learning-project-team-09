@@ -1,4 +1,5 @@
 import argparse
+import time
 import torch
 
 from transformer.config import (
@@ -74,6 +75,9 @@ def main():
     final_checkpoint = next(
         filter(lambda x: f"epoch_{cfg.num_epochs:02d}" in x, checkpoint_files), None
     )
+    
+    # Measure time for the entire script
+    start_time = time.time()
     if args.force:
         print(f"Training from scratch, --force flag provided")
         train_model(cfg)
@@ -82,6 +86,10 @@ def main():
     else:
         print(f"Start training...")
         train_model(cfg)
+    
+    # Print overall script timing
+    end_time = time.time()
+    print(f"\nTotal script execution time: {end_time - start_time:.2f} seconds")
 
 
 if __name__ == "__main__":

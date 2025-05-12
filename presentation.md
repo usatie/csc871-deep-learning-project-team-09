@@ -1,34 +1,20 @@
-# Neural Machine Translation using Transformer
+ # Neural Machine Translation using Transformer
 A Chinese–English Translation Case Study
 
 ---
-
-## What is Machine Translation?
-
-```
-MAX_LEN = 128
-BOS_TOK = "<s>"
-EOS_TOK = "</s>"
-
-def translate(model, src_tokens):
-  next_tok = None
-  output_tokens = [BOS_TOK]
-  while next_tok != EOS_TOK and len(output_tokens) < MAX_LEN:
-    next_tok = model.generate_next(src_tokens, output_tokens)
-    output_tokens.append(next_tok)
-  return output_tokens
-```
-*(This is a over-simplified greedy decoding approach)
-
----
-
 ## Motivation
 
-1. We want to understand Transformer architecture in depth
-2. We want to expand from CPU training to GPU training
-3. We want to even explore distributed training on multiple GPUs
+- understand Transformer architecture in depth
+- explore distributed training on multiple GPUs
 
-    -> Apply these concepts to a practical use case: Chinese-English translation
+
+---
+## Overview
+
+- Data Preparation
+- Implementation
+- Training Process
+- Evaluation
 
 ---
 
@@ -36,52 +22,51 @@ def translate(model, src_tokens):
 
 - Tatoeba Chinese-English Parallel Corpus (obtained April 27, 2025)
 - Number of sentence pairs: 71,155 total
-- Number of unique source sentences: 60,260 total
+<!-- - Number of unique source sentences: 60,260 total -->
 - Multiple target translations per source sentence
     ![bg_down](https://cdn.markslides.ai/users/1557/images/ONBsLiPafYnUg29RRDGJH)
-- Continuously being updated by users globally
-- CC BY 2.0 License
+- Split ratio: 80% train, 10% validation, 10% test  
+<!-- - Continuously being updated by users globally
+- CC BY 2.0 License -->
 
 <!--
 footer: "https://tatoeba.org/"
 -->
 
----
 
-## Dataset Details
-
-- Split ratio: 80% train, 10% validation, 10% test
-- Manually split by source sentence id
-  
-  | Split      | Source Sentence | Sentence Pairs       |
-  |------------|-----------------|----------------------|
-  | Training   | 48,208 (80.00%) | 56,830 pairs (79.87%)|
-  | Validation | 6,026 (10.00%)  | 7,166 pairs (10.07%) |
-  | Test       | 6,026 (10.00%)  | 7,159 pairs (10.06%) |
-<!--
-footer: ""
--->
 
 ---
 
 ## Pre-processing
 - Spacy tokenizers
-  - zh_core_web_sm for Chinese, en_core_web_sm for English
-- Max sequence length: 72 tokens
+  - zh_core_web_sm for Chinese
+  - en_core_web_sm for English
 - Vocabulary sizes:
   - Source (Chinese): 15,465 tokens
   - Target (English): 9,733 tokens
   - Included words appearing at least 2 times in either train/val/test
   - 4 special tokens: `<s>`, `</s>`, `<unk>`, `<pad>`
-
+- Max sequence length: 72 tokens
 <!--
-footer: "https://spacy.io/"
+footer: "https://arxiv.org/abs/1706.03762"
 -->
 
 ---
-<!--
-footer: ""
--->
+# Comparison of Datasets and Methods
+
+
+
+| | Team 9 | Attention is All you need |Ratio |
+|:---|:---:|:---:|:---:|
+| **source** | Tatoeba | WMT 2014 | - |
+| **language** | Chinese — English | English — German| -|
+| **Sentence Pairs** | 71,155 | 4.5 M |1:64|
+| **Tokenize method** | SpaCy<br>zh_core_web_sm /<br>en_core_web_sm | BPE | -|
+| **Vocabulary** | 15466(src) / 9733(tgt) | Shared 37,000 tokens|1:2.4|
+
+
+---
+
 
 # Implementation
 
@@ -96,7 +81,12 @@ footer: ""
   - Using spacy's tokenizers instead of BPE
   - Greedy search instead of beam search
   - No checkpoint ensembling (using single best checkpoint)
+
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
 ---
+
 
 ## Architecture Details
 
@@ -109,48 +99,216 @@ footer: ""
 
 ---
 
-## Architecture Components
+## Architecture
 
-- Embedding layers (separate for source/target)
-- Multi-head Attention mechanisms
-- Subsequent mask
-- Positional Encoding 
-- Feedforward layers
-- Dropout and Layer Normalization
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <div style="flex: 1;">
+    <img src="https://cdn.markslides.ai/users/1657/images/cLwUK-0TGD7dGxinYQl4-" width="400px" alt="Left Image">
+  </div>
+  <div style="flex: 3;">
+    <img src="https://cdn.markslides.ai/users/1657/images/n-75Am3WPaIBOSeDcfK0k" width="1000px" alt="Right Image">
+  </div>
+</div>
+
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
+
+
+---
+## EncoderLayer
+<div style="display: flex; align-items: flex-start; gap: 20px;">
+<!-- Left: Diagram -->
+<div style="flex: 1; text-align: center; max-width: 50%;">
+  <img src="https://cdn.markslides.ai/users/1657/images/WX6O4UBZFzg8opCI53pyc" width="100%" alt="Encoder Layer Diagram">
+  <p style="font-size: 20px; margin-top: 10px;">
+    input x: [batch_size, sequence_length, d_model] <br>
+    output: [batch_size, sequence_length, d_model]
+  </p>
+</div>
+
+<!-- Right: Code Blocks with Paragraphs -->
+<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+  <!-- First paragraph -->
+  <p style="font-size: 16px; margin: 0 0 5px 0;">
+    Apply residual connection to any sublayer with the same size:
+  </p>
+  
+  <!-- First code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0 0 15px 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class SublayerConnection(nn.Module):
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.norm(x)))</code></pre>
+        
+  <!-- Second paragraph -->
+  <p style="font-size: 16px; margin: 0 0 5px 0;">
+    Follow Figure 1 (left) for connections:
+  </p>
+  
+  <!-- Second code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class EncoderLayer(nn.Module):
+    def forward(self, x, mask):
+        x = self.sublayer[0]
+        (x, lambda x: self.self_attn(x, x, x, mask))
+        return self.sublayer[1](x, self.feed_forward)</code></pre>
+</div>
+</div>
+
+
 
 ---
 
-## Embedding Layer
-- TODO
+## DecoderLayer
+
+<div style="display: flex; align-items: flex-start; gap: 20px;">
+<!-- Left: Diagram -->
+<div style="flex: 1; text-align: center; max-width: 50%;">
+  <img src="https://cdn.markslides.ai/users/1657/images/rFPvLjP_jMYsfL0nkfrNQ" width="100%" alt="Encoder Layer Diagram">
+  <p style="font-size: 20px; margin-top: 10px;">
+    input x: [batch_size, sequence_length, d_model] <br>
+    output: [batch_size, sequence_length, d_model]
+  </p>
+</div>
+
+<!-- Right: Code Blocks with Paragraphs -->
+<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+  <!-- First paragraph -->
+  <p style="font-size: 16px; margin: 0 0 5px 0;">
+    Apply residual connection to any sublayer with the same size:
+  </p>
+  
+  <!-- First code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0 0 15px 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class SublayerConnection(nn.Module):
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.norm(x)))</code></pre>
+        
+  <!-- Second paragraph -->
+  <p style="font-size: 16px; margin: 0 0 5px 0;">
+    Decoder is made of self-attn, src-attn, and feed forward (defined below)
+  </p>
+  
+  <!-- Second code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class DecoderLayer(nn.Module)
+    def __init__(self, size, self_attn, src_attn, feed_forward, dropout):
+        super(DecoderLayer, self).__init__()
+        self.sublayer = 
+                clones(SublayerConnection(size, dropout), 3)
+    def forward(self, x, memory, src_mask, tgt_mask):
+        "Follow Figure 1 (right) for connections."
+        m = memory
+        x = self.sublayer[0](x, 
+                lambda x: self.self_attn(x, x, x, tgt_mask))
+        x = self.sublayer[1](x, 
+                lambda x: self.src_attn(x, m, m, src_mask))
+        return self.sublayer[2](x, self.feed_forward)</code></pre>
+</div>
+</div>
+
 
 ---
 
 ## Multi-head Attention
-- TODO
 
----
+<div style="display: flex; align-items: flex-start; gap: 20px;">
+<!-- Left: Diagram -->
+<div style="flex: 1; text-align: center; max-width: 50%;">
+  <img src="https://cdn.markslides.ai/users/1657/images/m-DOW7Hg69yqZdPHoOFla" width="100%" alt="Encoder Layer Diagram">
+  <p style="font-size: 20px; margin-top: 10px;">
+    [batch_size, sequence_length, d_model] <br>
+    -> [batch_size, sequence_length, h, d_k] <br>
+    -> [batch_size, h, sequence_length, d_k] <br>
+    -> [batch_size, sequence_length, d_model]
+  </p>
+</div>
 
-## Subsequent mask for decoder
-- TODO
+<!-- Right: Code Blocks with Paragraphs -->
+<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+  
+  <!-- First code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0 0 15px 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class MultiHeadedAttention(nn.Module):
+    def __init__(self, h, d_model, dropout=0.1):
+        "Take in model size and number of heads."   
+        self.d_k = d_model // h
+        self.h = h
+        self.linears = clones(nn.Linear(d_model, d_model), 4)
 
----
+    def forward(self, query, key, value, mask=None):
+        # 1) Do all the linear projections in batch 
+        #    from d_model => h x d_k
+        query, key, value = [
+            lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+            for lin, x in zip(self.linears, (query, key, value))]
+        
+        # 2) Apply attention on all the projected vectors in batch.
+        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
+        
+        # 3) "Concat" using a view and apply a final linear.
+        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h * self.d_k)
+        return self.linears[-1](x)</code></pre>
 
-## Positional Encoding 
-- TODO
+</div>
+</div>
+
 
 ---
 
 ## Feedforward layers
-- TODO
+<!-- 
+input (d_model) → Linear(d_ff) → ReLU → Dropout → Linear(d_model)
+
+<div style="display: flex; align-items: center; gap: 20px;">
+
+  <!-- Left: Centered Image -->
+  <!-- <img src="https://cdn.markslides.ai/users/1657/images/EhXXnJuJ9BhAiAdCh7h4a" alt="Feedforward Diagram" style="width: 250px; display: block;" />
+
+  <!-- Right: Code Block -->
+  <!-- <pre><code class="language-python">
+class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = nn.Linear(d_model, d_ff)
+        self.w_2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        return self.w_2(self.dropout(torch.relu(self.w_1(x))))
+  </code></pre>
+
+</div> --> --> -->
+
+<div style="display: flex; align-items: flex-start; gap: 20px;">
+<!-- Left: Diagram -->
+<div style="flex: 1; text-align: center; max-width: 50%;">
+  <img src="https://cdn.markslides.ai/users/1657/images/EhXXnJuJ9BhAiAdCh7h4a" width="100%" alt="Encoder Layer Diagram">
+  <p style="font-size: 20px; margin-top: 10px;">
+    input x: [batch_size, sequence_length, d_model] <br>
+    -> [batch_size, sequence_length, 4 * d_model] <br>
+    output: [batch_size, sequence_length, d_model]
+  </p>
+</div>
+
+<!-- Right: Code Blocks with Paragraphs -->
+<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+
+  
+  <!-- Second code block -->
+  <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class PositionwiseFeedForward(nn.Module):
+    def __init__(self, d_model, d_ff, dropout=0.1):
+        super(PositionwiseFeedForward, self).__init__()
+        self.w_1 = nn.Linear(d_model, d_ff)
+        self.w_2 = nn.Linear(d_ff, d_model)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x):
+        return self.w_2(self.dropout(torch.relu(self.w_1(x))))</code></pre>
+</div>
+</div>
+
 
 ---
 
-## Dropout and Layer Normalization
-- TODO
-
----
 # Training
 ---
+
 
 ## Training Overview
 
@@ -230,9 +388,6 @@ footer: ""
 - Custom distributed training wrapper for easier debugging
 
 ---
-# Evaluation
----
-
 ## Computational Platform
 
 - Perlmutter supercomputer at NERSC
@@ -251,6 +406,21 @@ footer: ""
 - 3rd generation NVLink connections:
   - 4 links between each GPU pair
   - 25 GB/s/direction per link
+---
+# Evaluation
+
+---
+## Understanding Train and Validation Loss
+
+- Training Loss: Measures how well the model fits the training data. Lower means better learning.
+- Validation Loss: Measures model performance on unseen validation data.
+- Important to monitor both to detect:
+  - Underfitting (both high)
+  - Overfitting (train low, val high)
+- Compares predicted word probabilities vs true words
+- Lower Cross-Entropy = better matching of outputs to targets
+- We track Training Loss (on train data) and Validation Loss (on unseen data) across epochs.
+
 
 ---
 ## Training/Validation Loss
@@ -277,33 +447,46 @@ footer: ""
 - Total Accumulation steps 9612
 
 ---
+## BLEU Score
+- BLEU (Bilingual Evaluation Understudy):
+  - Measures similarity between machine translation and human translation
+  - Based on overlapping n-grams (word groups)
+  - Score range: 0 (worst) to 100 (perfect)
+- Why not simple accuracy?
+  - Translation allows multiple correct outputs
+  - Accuracy expects exact match (too strict)
+- BLEU is industry standard for translation quality
 
-## Example Translation 1 by early epoch model (epoch = 5)
-- TODO: Add
+---
+## BLEU Score Evaluation
+
+- Loaded trained model weights directly (.pt checkpoints)
+- Compared outputs against multiple human references
+- Evaluation process:
+  - Decode each input sentence
+  - Tokenize output and references
+  - Calculate BLEU using SacreBLEU library
+  - tqdm for batching and progress.
+- Evaluated on 55–100 examples for faster experimentation
+
+
+---
+## BLEU Results and Observations
+- Model 1 (batch size 32): BLEU = 0.31
+- Model 2 (batch size 128): BLEU = TBD (after running)
+- Observations:
+  - BLEU scores are lower due to simple decoding strategy
+  - Model 2 expected to perform better with larger batch and smoother loss curve
+  - BLEU variation between models reflects real differences in training quality
+- Improvements:
+  - Optimize batch size, learning rate, accumulation.
+  - Increase BLEU evaluation samples.
+  - Try beam search decoding.
+  - Fine-tune on larger datasets.
 
 ---
 
-## Example Translation 2 by mid epoch model (epoch = 50)
-- TODO: Add
-
----
-
-## Example Translation 3 by late epoch model (epoch = 100)
-- TODO: Add
-
-
----
-
-## Encoder Self Attention Visualization
-- TODO: Add
----
-
-## Decoder Self Attention Visualization
-- TODO: Add
----
-
-## Decoder Cross(src) Attention Visualization
-- TODO: Add
+## Demo and Attention Visualization
 
 ---
 
@@ -321,16 +504,16 @@ footer: ""
 
 ---
 
-## Overfitting Analysis : Sentence Length
+## Overfitting Analysis : Sentence Length (number of tokens in sentence)
 | Dataset     | Avg.     | Med.     | std.     |
 |-------------|----------|----------|----------|
-| Tatoeba zh  | 10.75    | 10.0     | 6.02     |
-| Tatoeba en  | 6.76     | 6.0      | 3.72     |
-| WMT14 de    | 21.31    | 19.00    | 13.34    |
-| WMT14 en    | 22.98    | 20.00    | 15.01    |
+| Tatoeba zh  | 7.55    | 7.0    |3.98     |
+| Tatoeba en  | 8.22    |7.0     | 4.20     |
+| WMT14 de    | 28.12    | 24.00   |20.77   |
+| WMT14 en    | 28.09    | 24.00    | 24.50    |
 
-![bg right vertical h:240](https://cdn.markslides.ai/users/1557/images/FUDfHgPCmqdAlL4O1vIF3)
-![bg right h:240](https://cdn.markslides.ai/users/1557/images/63uhgmOY8GaViL6zVbOG4)
+![bg right vertical h:280](https://cdn.markslides.ai/users/1657/images/iB5VUlz1aAQJxVy0tvpsp)
+![bg right h:280](https://cdn.markslides.ai/users/1657/images/tU-5wRaQculcWIryIUYgq)
 
 ---
 
@@ -437,3 +620,4 @@ PARAMETER DISTRIBUTION:
 - Total GPU memory usage:
   - Config 1 (BS=128): [TBD] GB
   - Config 2 (BS=32): [TBD] GB
+

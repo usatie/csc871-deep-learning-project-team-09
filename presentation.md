@@ -1,5 +1,10 @@
- # Neural Machine Translation using Transformer
-A Chinese–English Translation Case Study
+# Neural Machine Translation Using Transformer  
+*A Chinese–English Translation Case Study*
+
+<div style="text-align: left; font-size: 25px; margin-top: 30px;">
+  👥 Team 9: <strong>Shun</strong>, <strong>Ruxue</strong>, <strong>Yash</strong>
+</div>
+
 
 ---
 ## Motivation
@@ -78,7 +83,6 @@ footer: "https://arxiv.org/abs/1706.03762"
 - Key differences from original paper (for the simplicity sake):
   - No shared embeddings between encoder and decoder
   - Using separate tokenizers for source and target
-  - Using spacy's tokenizers instead of BPE
   - Greedy search instead of beam search
   - No checkpoint ensembling (using single best checkpoint)
 
@@ -170,7 +174,7 @@ footer: "https://arxiv.org/abs/1706.03762"
 </div>
 
 <!-- Right: Code Blocks with Paragraphs -->
-<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+<div style="flex: 1; max-width: 61%; display: flex; flex-direction: column; gap: 10px;">
   <!-- First paragraph -->
   <p style="font-size: 16px; margin: 0 0 5px 0;">
     Apply residual connection to any sublayer with the same size:
@@ -190,15 +194,12 @@ footer: "https://arxiv.org/abs/1706.03762"
   <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class DecoderLayer(nn.Module)
     def __init__(self, size, self_attn, src_attn, feed_forward, dropout):
         super(DecoderLayer, self).__init__()
-        self.sublayer = 
-                clones(SublayerConnection(size, dropout), 3)
+        self.sublayer = clones(SublayerConnection(size, dropout), 3)
     def forward(self, x, memory, src_mask, tgt_mask):
         "Follow Figure 1 (right) for connections."
         m = memory
-        x = self.sublayer[0](x, 
-                lambda x: self.self_attn(x, x, x, tgt_mask))
-        x = self.sublayer[1](x, 
-                lambda x: self.src_attn(x, m, m, src_mask))
+        x = self.sublayer[0](x, lambda x: self.self_attn(x, x, x, tgt_mask))
+        x = self.sublayer[1](x, lambda x: self.src_attn(x, m, m, src_mask))
         return self.sublayer[2](x, self.feed_forward)</code></pre>
 </div>
 </div>
@@ -221,7 +222,7 @@ footer: "https://arxiv.org/abs/1706.03762"
 </div>
 
 <!-- Right: Code Blocks with Paragraphs -->
-<div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+<div style="flex: 1; max-width: 70%; display: flex; flex-direction: column; gap: 10px;">
   
   <!-- First code block -->
   <pre style="background-color: #f6f8fa; padding: 12px; border-radius: 5px; margin: 0 0 15px 0;"><code style="font-family: 'Consolas', monospace; font-size: 16px; line-height: 1.4;">class MultiHeadedAttention(nn.Module):
@@ -232,19 +233,18 @@ footer: "https://arxiv.org/abs/1706.03762"
         self.linears = clones(nn.Linear(d_model, d_model), 4)
 
     def forward(self, query, key, value, mask=None):
-        # 1) Do all the linear projections in batch 
-        #    from d_model => h x d_k
+        # 1) Do all the linear projections in batch from d_model => h x d_k
         query, key, value = [
-            lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
+          lin(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
             for lin, x in zip(self.linears, (query, key, value))]
-        
+            
         # 2) Apply attention on all the projected vectors in batch.
         x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
         
         # 3) "Concat" using a view and apply a final linear.
-        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h * self.d_k)
+        x = x.transpose(1, 2).contiguous().
+        view(nbatches, -1, self.h * self.d_k)
         return self.linears[-1](x)</code></pre>
-
 </div>
 </div>
 
@@ -547,8 +547,7 @@ class PositionwiseFeedForward(nn.Module):
 - Gradient accumulation to effectively increase batch size
 - Detailed logging for distributed training debugging
 
----
-# Conclusion
+
 ---
 
 ## Conclusion
@@ -558,18 +557,6 @@ class PositionwiseFeedForward(nn.Module):
 - Observed common seq2seq training patterns: fast initial learning, eventual overfitting
 - Gained practical experience with distributed training on HPC
 
----
-
-## Future Work
-
-- Experiment with early stopping to prevent overfitting
-- Try different regularization strategies
-- Implement model compression techniques
-- Implement beam search for better translation quality
-- Implement tokenization using subword techniques (BPE, WordPiece)
-- Train on larger datasets
-- Weights share in embedding layer (encoder/decoder/generator)
-- Explore multilingual models (zh -> multiple languages)
 
 ---
 
@@ -579,8 +566,7 @@ class PositionwiseFeedForward(nn.Module):
 - Test on more diverse datasets beyond Tatoeba
 - Explore multilingual models (zh → multiple languages)
 
----
-# References
+
 ---
 
 ## References
@@ -591,8 +577,7 @@ class PositionwiseFeedForward(nn.Module):
 - Tatoeba Project: https://tatoeba.org/
 - NERSC Perlmutter: https://docs.nersc.gov/systems/perlmutter/architecture/
 
----
-# Appendix
+
 ---
 ## Appendix: Model Size
 

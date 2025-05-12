@@ -124,15 +124,3 @@ plt.tight_layout()
 plt.savefig("./src/data_analyse/sentence_length_distribution_WMT14.png", dpi=300)
 plt.show()
 
-# Print statistics for German sentence lengths
-print("German Sentence Length Statistics:")
-print(f"Mean:   {data['German'].mean():.2f}")
-print(f"Median: {data['German'].median():.2f}")
-print(f"Std:    {data['German'].std():.2f}\n")
-
-# Print statistics for English sentence lengths
-print("English Sentence Length Statistics:")
-print(f"Mean:   {data['English'].mean():.2f}")
-print(f"Median: {data['English'].median():.2f}")
-print(f"Std:    {data['English'].std():.2f}")
-

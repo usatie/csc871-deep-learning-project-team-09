@@ -193,7 +193,8 @@ def plot_attention_map(attn, layer, head, row_tokens, col_tokens, ax=None, title
     return ax
 
 
-def visualize_with_matplotlib(viz_data, src_text, tgt_text, model_output_text, output_prefix="attention"):
+def visualize_with_matplotlib(viz_data, src_text, model_output_text, output_prefix="attention"):
+# def visualize_with_matplotlib(viz_data, src_text, tgt_text, model_output_text, output_prefix="attention"):
     """
     Creates and saves matplotlib visualizations for attention data
 
@@ -234,52 +235,52 @@ def visualize_with_matplotlib(viz_data, src_text, tgt_text, model_output_text, o
     plt.close(fig)
 
     # 2. Decoder Self-Attention Training
-    fig, axes = plt.subplots(
-        len(layers_to_viz),
-        len(heads_to_viz),
-        figsize=(16, 12)
-    )
-    fig.suptitle(f"Decoder Self-Attention in Training: {tgt_text}", fontsize=16)
-
-    for i, layer_idx in enumerate(layers_to_viz):
-        for j, head_idx in enumerate(heads_to_viz):
-            ax = axes[i, j]
-            plot_attention_map(
-                viz_data[f"decoder_layer{layer_idx}_self"],
-                layer_idx,
-                head_idx,
-                viz_data["tgt_tokens"][1:],
-                viz_data["tgt_tokens"][:-1],
-                ax=ax
-            )
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for title
-    plt.savefig(f"./src/visualization/{output_prefix}_decoder_self_train.png", dpi=200)
-    plt.close(fig)
+    # fig, axes = plt.subplots(
+    #     len(layers_to_viz),
+    #     len(heads_to_viz),
+    #     figsize=(16, 12)
+    # )
+    # fig.suptitle(f"Decoder Self-Attention in Training: {tgt_text}", fontsize=16)
+    #
+    # for i, layer_idx in enumerate(layers_to_viz):
+    #     for j, head_idx in enumerate(heads_to_viz):
+    #         ax = axes[i, j]
+    #         plot_attention_map(
+    #             viz_data[f"decoder_layer{layer_idx}_self"],
+    #             layer_idx,
+    #             head_idx,
+    #             viz_data["tgt_tokens"][1:],
+    #             viz_data["tgt_tokens"][:-1],
+    #             ax=ax
+    #         )
+    #
+    # plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for title
+    # plt.savefig(f"./src/visualization/{output_prefix}_decoder_self_train.png", dpi=200)
+    # plt.close(fig)
 
     # 3. Decoder-Encoder Attention Training
-    fig, axes = plt.subplots(
-        len(layers_to_viz),
-        len(heads_to_viz),
-        figsize=(16, 12)
-    )
-    fig.suptitle(f"Decoder-Encoder Cross-Attention in Training: {tgt_text} ← {src_text}", fontsize=16)
+    # fig, axes = plt.subplots(
+    #     len(layers_to_viz),
+    #     len(heads_to_viz),
+    #     figsize=(16, 12)
+    # )
+    # fig.suptitle(f"Decoder-Encoder Cross-Attention in Training: {tgt_text} ← {src_text}", fontsize=16)
+    #
+    # for i, layer_idx in enumerate(layers_to_viz):
+    #     for j, head_idx in enumerate(heads_to_viz):
+    #         ax = axes[i, j]
+    #         plot_attention_map(
+    #             viz_data[f"decoder_layer{layer_idx}_src"],
+    #             layer_idx,
+    #             head_idx,
+    #             viz_data["tgt_tokens"][1:],
+    #             viz_data["src_tokens"],
+    #             ax=ax
+    #         )
 
-    for i, layer_idx in enumerate(layers_to_viz):
-        for j, head_idx in enumerate(heads_to_viz):
-            ax = axes[i, j]
-            plot_attention_map(
-                viz_data[f"decoder_layer{layer_idx}_src"],
-                layer_idx,
-                head_idx,
-                viz_data["tgt_tokens"][1:],
-                viz_data["src_tokens"],
-                ax=ax
-            )
-
-    plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for title
-    plt.savefig(f"./src/visualization/{output_prefix}_decoder_cross_train.png", dpi=200)
-    plt.close(fig)
+    # plt.tight_layout(rect=[0, 0, 1, 0.96])  # Adjust for title
+    # plt.savefig(f"./src/visualization/{output_prefix}_decoder_cross_train.png", dpi=200)
+    # plt.close(fig)
 
     # 4. Decoder Self-Attention Inference
     fig, axes = plt.subplots(
@@ -341,7 +342,8 @@ def get_attention_matrices(model, layer_idx):
     }
 
 
-def visualize_single_example(model_path, src_text, tgt_text, model_output, config):
+# def visualize_single_example(model_path, src_text, tgt_text, model_output, config):
+def visualize_single_example(model_path, src_text, model_output, config):
     """Visualize attention for a single source-target sentence pair"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -368,30 +370,32 @@ def visualize_single_example(model_path, src_text, tgt_text, model_output, confi
 
     # 3. Tokenize source and target
     src_tokens = ["<s>"] + tokenize(src_text, tokenizers[config.src_lang]) + ["</s>"]
-    tgt_tokens = ["<s>"] + tokenize(tgt_text, tokenizers[config.tgt_lang]) + ["</s>"]
+    # tgt_tokens = ["<s>"] + tokenize(tgt_text, tokenizers[config.tgt_lang]) + ["</s>"]
     model_output_tokens = ["<s>"] + tokenize(model_output, tokenizers[config.tgt_lang]) + ["</s>"]
 
     print(f"Source tokens: {src_tokens}")
-    print(f"Target tokens: {tgt_tokens}")
+    # print(f"Target tokens: {tgt_tokens}")
     print(f"model_output_tokens tokens: {model_output_tokens}")
 
     # 4. Convert to indices
     src_indices = [src_vocab[token] for token in src_tokens]
-    tgt_indices = [tgt_vocab[token] for token in tgt_tokens]
+    # tgt_indices = [tgt_vocab[token] for token in tgt_tokens]
     model_output_indices = [tgt_vocab[token] for token in model_output_tokens]
 
     # 5. Create tensors
     src = torch.tensor([src_indices], dtype=torch.long).to(device)
-    tgt = torch.tensor([tgt_indices], dtype=torch.long).to(device)
+    # tgt = torch.tensor([tgt_indices], dtype=torch.long).to(device)
     output = torch.tensor([model_output_indices], dtype=torch.long).to(device)
 
     # 6. Create masks
     src_mask = (src != src_vocab["<blank>"]).unsqueeze(-2).to(device)
-    tgt_mask = subsequent_mask(tgt.size(1)).type_as(src_mask.data).to(device)
+    tgt_mask = subsequent_mask(output.size(1)).type_as(src_mask.data).to(device)
+    # tgt_mask = subsequent_mask(tgt.size(1)).type_as(src_mask.data).to(device)
 
     # 7. Forward pass to get attention
     with torch.no_grad():
-        model(src, tgt, src_mask, tgt_mask)
+        # model(src, tgt, src_mask, tgt_mask)
+        model(src, output, src_mask, tgt_mask)
 
     # 8. Collect attention matrices
     layers_to_viz = [0, 2, 4]  # Visualize these layers
@@ -399,7 +403,7 @@ def visualize_single_example(model_path, src_text, tgt_text, model_output, confi
     # Create a dictionary to hold all the attention matrices and tokens
     viz_data = {
         "src_tokens": src_tokens,
-        "tgt_tokens": tgt_tokens,
+        # "tgt_tokens": tgt_tokens,
         "model_output_tokens": model_output_tokens
     }
 
@@ -414,7 +418,8 @@ def visualize_single_example(model_path, src_text, tgt_text, model_output, confi
         viz_data[f"decoder_layer{layer_idx}_src"] = attn_matrices["decoder_src"]
 
     # 9. Create and save matplotlib visualizations
-    visualize_with_matplotlib(viz_data, src_text, tgt_text, model_output)
+    # visualize_with_matplotlib(viz_data, src_text, tgt_text, model_output)
+    visualize_with_matplotlib(viz_data, src_text, model_output)
 
     return viz_data
 
@@ -442,9 +447,9 @@ class TranslationConfig:
 config = TranslationConfig()
 
 # Define the source text and model path
-src_text = "我長大後想當國王。"
+src_text = "今天陽光明媚，適合出去走一走。。"
 checkpoint_path = "./src/visualization/epoch_40_bs128_acc21_warm3000.pt"
-
+# tgt_txt = "Today is sunny, a good day for a walk."
 # Get model translation
 model_translation = get_model_translation(checkpoint_path, src_text, config)
 
@@ -452,7 +457,7 @@ model_translation = get_model_translation(checkpoint_path, src_text, config)
 viz_data = visualize_single_example(
     model_path=checkpoint_path,
     src_text=src_text,
-    tgt_text="When I grow up, I want to be a king.",
+    # tgt_text = tgt_txt,
     model_output=model_translation,
     config=config
 )

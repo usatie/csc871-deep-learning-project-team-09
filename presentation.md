@@ -316,25 +316,17 @@ class PositionwiseFeedForward(nn.Module):
 - Optimizer: Adam with Noam-style learning rate scheduler
 - (Our implementation used 3000 warumup steps)
 
-  ![](https://cdn.markslides.ai/users/1557/images/JPFj7bWzM9wzvQvH7vZJx)
 
 
 ---
 ## Learning Rate Scheduling
-
-![bg right](https://images.unsplash.com/photo-1543286386-713bdd548da4?crop=entropy&cs=srgb&fm=jpg&ixid=M3w1NTU5NjN8MHwxfHNlYXJjaHwxfHxncmFwaHxlbnwwfHx8fDE3NDY4MzI2NTR8MA&ixlib=rb-4.1.0&q=85)
-- Start from 0
-- Gradually increase until the warmup period finishes
-- Gradually decrease thereafter
+![](https://cdn.markslides.ai/users/1557/images/JPFj7bWzM9wzvQvH7vZJx)
 
 ---
-## Potential issues of our implementation
-- Our warmup (3000) was likely too large for the total training steps
-  - Config 1 (BS=128): ~2200 accum steps after 100 epochs (136%)
-  - Config 2 (BS=32): ~8900 accum steps after 50 epochs (34%)
-- Original Paper:
-  - 4000 warmup steps for total of 100,000 steps
-
+## Learning Rate Scheduling
+- Warmup steps = 4,000
+- Total steps = 100,000
+![bg right:67% h:540](https://cdn.markslides.ai/users/1557/images/M3GKyHpbS_QYTTmXjXc2v)
 
 ---
 
@@ -365,47 +357,51 @@ class PositionwiseFeedForward(nn.Module):
   - Config 2: ~8,900 updates (50 epochs)
 
 ---
+## Potential issues of our implementation
+- Our warmup (3000) was likely too large for the total training steps
+  - Config 1 (BS=128): ~2200 accum steps after 100 epochs (136%)
+  - Config 2 (BS=32): ~8900 accum steps after 50 epochs (34%)
+- Original Paper:
+  - 4000 warmup steps for total of 100,000 steps
+![bg right width:640](https://cdn.markslides.ai/users/1557/images/R_hPfuVtdzqiDitsAEBwp)
+<!-- ![bg right:67% width:960](https://cdn.markslides.ai/users/1557/images/olw9-wL-QF2a3tGi_8LeR)
+ -->
+
+---
 # Distributed Training
 ---
 
 ## Distributed Training Overview
 
 - PyTorch Distributed Data Parallel (DDP) framework
+  - `torch.nn.parallel.DistributedDataParallel` (Model)
+  - `torch.utils.data.DistributedSampler` (Dataset)
+- Parallelized across 4 NVIDIA A100 GPUs on a single node
+- Full model parameters kept on each GPU
+- Gradient synchronization at backward pass
+
+---
+
+## Distributed Training Implementation Overview
+
 - Implementation steps:
   - Initialize process groups
-  - Distribute data across GPUs
+  - Move data to GPUs (model/optimizer/datasets/etc..)
   - Reduce gradients during backward pass
   - Broadcast updated weights
   - Reduce values for logging
 
 ---
-
-## Distributed Training Details
-
-- Parallelized across 4 NVIDIA A100 GPUs on a single node
-- Full model parameters kept on each GPU
-- Gradient synchronization at backward pass
-- Custom distributed training wrapper for easier debugging
-
----
 ## Computational Platform
 
-- Perlmutter supercomputer at NERSC
+- We used single GPU node on Perlmutter supercomputer at NERSC
 - Single GPU node configuration:
-  - One AMD EPYC 7763 (Milan) processor
-  - 64 cores with 204.8 GiB/s peak memory bandwidth
-  - Four NVIDIA A100 (Ampere) GPUs
-
----
-
-## Hardware Details
-
-- GPU specifications:
-  - 40GB HBM2 with 1555 GB/s memory bandwidth, or
-  - 80GB HBM2e with 2039 GB/s memory bandwidth
-- 3rd generation NVLink connections:
-  - 4 links between each GPU pair
-  - 25 GB/s/direction per link
+  - CPU: 1 x AMD EPYC 7763 (Milan)
+  - GPU: 4 x NVIDIA A100 (Ampere) GPUs
+    - 40GB HBM2 with 1555 GB/s memory bandwidth
+    - 3rd generation NVLink connections:
+      - 4 links between each GPU pair
+      - 25 GB/s/direction per link
 ---
 # Evaluation
 

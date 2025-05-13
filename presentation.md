@@ -1,5 +1,5 @@
 # Neural Machine Translation Using Transformer  
-*A Chinese–English Translation Case Study*
+*A Chinese – English Translation Case Study*
 
 <div style="text-align: left; font-size: 25px; margin-top: 30px;">
   👥 Team 9: <strong>Shun</strong>, <strong>Ruxue</strong>, <strong>Yash</strong>
@@ -9,8 +9,8 @@
 ---
 ## Motivation
 
-- understand Transformer architecture in depth
-- explore distributed training on multiple GPUs
+- Understand Transformer architecture in depth
+- Explore distributed training on multiple GPUs
 
 
 ---
@@ -27,13 +27,13 @@
 
 - Tatoeba Chinese-English Parallel Corpus (obtained April 27, 2025)
 - Number of sentence pairs: 71,155 total
-<!-- - Number of unique source sentences: 60,260 total -->
 - Multiple target translations per source sentence
+
     ![bg_down](https://cdn.markslides.ai/users/1557/images/ONBsLiPafYnUg29RRDGJH)
 - Split ratio: 80% train, 10% validation, 10% test  
-<!-- - Continuously being updated by users globally
-- CC BY 2.0 License -->
 
+
+<!-- Slide with footer -->
 <!--
 footer: "https://tatoeba.org/"
 -->
@@ -52,8 +52,10 @@ footer: "https://tatoeba.org/"
   - Included words appearing at least 2 times in either train/val/test
   - 4 special tokens: `<s>`, `</s>`, `<unk>`, `<pad>`
 - Max sequence length: 72 tokens
+
+<!-- Clear the footer on the next slide -->
 <!--
-footer: "https://arxiv.org/abs/1706.03762"
+footer: ""
 -->
 
 ---
@@ -69,30 +71,24 @@ footer: "https://arxiv.org/abs/1706.03762"
 | **Tokenize method** | SpaCy<br>zh_core_web_sm /<br>en_core_web_sm | BPE | -|
 | **Vocabulary** | 15466(src) / 9733(tgt) | Shared 37,000 tokens|1:2.4|
 
+<!-- Clear the footer on the next slide -->
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
 
 ---
 
 
 # Implementation
 
----
-
-## Implementation: Model Architecture
-
-- Based on Vaswani et al. (2017) "Attention Is All You Need"
-- Key differences from original paper (for the simplicity sake):
-  - No shared embeddings between encoder and decoder
-  - Using separate tokenizers for source and target
-  - Greedy search instead of beam search
-  - No checkpoint ensembling (using single best checkpoint)
-
 <!--
-footer: "https://arxiv.org/abs/1706.03762"
+footer: ""
 -->
+
 ---
 
-
-## Architecture Details
+## Architecture Parameters
+Based on Vaswani et al. (2017) "Attention Is All You Need"
 
 - Encoder-Decoder structure with 6 layers each
 - Embedding size: 512
@@ -100,6 +96,10 @@ footer: "https://arxiv.org/abs/1706.03762"
 - Attention heads: 8
 - Dropout rate: 0.1
 - Total parameters: 62,034,949 (~237 MB)
+
+<!--
+footer: "https://arxiv.org/abs/1706.03762"
+-->
 
 ---
 
@@ -118,6 +118,22 @@ footer: "https://arxiv.org/abs/1706.03762"
 footer: "https://arxiv.org/abs/1706.03762"
 -->
 
+
+---
+
+```
+    model = EncoderDecoder(
+        Encoder(EncoderLayer(d_model, c(attn), c(ff), dropout), N),
+        Decoder(DecoderLayer(d_model, c(attn), c(attn), c(ff), dropout), N),
+        nn.Sequential(Embeddings(d_model, src_vocab), c(position)),
+        nn.Sequential(Embeddings(d_model, tgt_vocab), c(position)),
+        Generator(d_model, tgt_vocab),
+    )
+```
+
+<!--
+footer: ""
+-->
 
 ---
 ## EncoderLayer
@@ -249,31 +265,14 @@ footer: "https://arxiv.org/abs/1706.03762"
 </div>
 
 
+<!--
+footer: "lecture slides"
+-->
+
 ---
 
-## Feedforward layers
-<!-- 
-input (d_model) → Linear(d_ff) → ReLU → Dropout → Linear(d_model)
+## Feedforward Layers
 
-<div style="display: flex; align-items: center; gap: 20px;">
-
-  <!-- Left: Centered Image -->
-  <!-- <img src="https://cdn.markslides.ai/users/1657/images/EhXXnJuJ9BhAiAdCh7h4a" alt="Feedforward Diagram" style="width: 250px; display: block;" />
-
-  <!-- Right: Code Block -->
-  <!-- <pre><code class="language-python">
-class PositionwiseFeedForward(nn.Module):
-    def __init__(self, d_model, d_ff, dropout=0.1):
-        super(PositionwiseFeedForward, self).__init__()
-        self.w_1 = nn.Linear(d_model, d_ff)
-        self.w_2 = nn.Linear(d_ff, d_model)
-        self.dropout = nn.Dropout(dropout)
-
-    def forward(self, x):
-        return self.w_2(self.dropout(torch.relu(self.w_1(x))))
-  </code></pre>
-
-</div> --> --> -->
 
 <div style="display: flex; align-items: flex-start; gap: 20px;">
 <!-- Left: Diagram -->
@@ -288,6 +287,9 @@ class PositionwiseFeedForward(nn.Module):
 
 <!-- Right: Code Blocks with Paragraphs -->
 <div style="flex: 1; max-width: 50%; display: flex; flex-direction: column; gap: 10px;">
+<p style="font-size: 16px; margin: 0 0 5px 0;">
+    input (d_model) → Linear(d_ff) → ReLU → Dropout → Linear(d_model)  → output(d_model)
+  </p>
 
   
   <!-- Second code block -->
@@ -303,10 +305,14 @@ class PositionwiseFeedForward(nn.Module):
 </div>
 </div>
 
-
 ---
 
 # Training
+
+<!--
+footer: ""
+-->
+
 ---
 
 
@@ -403,13 +409,15 @@ class PositionwiseFeedForward(nn.Module):
       - 4 links between each GPU pair
       - 25 GB/s/direction per link
 ---
+
 # Evaluation
 
 ---
+
 ## Understanding Train and Validation Loss
 
-- Training Loss: Measures how well the model fits the training data. Lower means better learning.
-- Validation Loss: Measures model performance on unseen validation data.
+- **Training Loss:** Measures how well the model fits the training data. **Lower means better learning.**
+- **Validation Loss:** Measures model performance on unseen validation data.
 - Important to monitor both to detect:
   - Underfitting (both high)
   - Overfitting (train low, val high)
@@ -417,34 +425,50 @@ class PositionwiseFeedForward(nn.Module):
 - Lower Cross-Entropy = better matching of outputs to targets
 - We track Training Loss (on train data) and Validation Loss (on unseen data) across epochs.
 
-
----
-## Training/Validation Loss
-![bg right:60% w:720](https://cdn.markslides.ai/users/1557/images/_k3d43Qt3KFBpHZudRvz0)
-- Training loss continuously decreases
-- Validation loss exhibit plateau (then even increases)
-- Gap between train/val loss indicates overfitting
----
-## Training Results (Config 1)
-
-- Batch size 128, Accumulation steps 21
-- Tokens/accum : approx. 25,000
-- 100 epochs completed
-- Total Accumulation steps 2200
-
 ---
 
-## Evaluation: Training Results (Config 2)
+## Loss Visualization
 
-- Batch size 32, Accumulation steps 10
-- Tokens/accum : approx. 4,000
-- 54 epochs completed
-  - Stopped early because it took very long and it was obvious that it was overfitting
-- Total Accumulation steps 9612
+- Just numbers (loss values) are not enough — graphs reveal:
+  - Where learning plateaus
+  - When overfitting starts
+  - How quickly model learns
+- Loss values were saved during training in JSON files.
+- We parsed these logs and used Matplotlib for visualization.
+- Plotted:
+  - Training vs Validation Loss for Model 1 and Model 2.
+  - Compared training and validation losses between models.
+- Helps to identify overfitting, underfitting, and generalization performance.
 
 ---
+
+## Loss Graphs
+
+<div style="text-align: center;">
+<img src="https://cdn.markslides.ai/users/1695/images/ED4KRMbaRTipZ8ZFjvkE3" width="1500" height="750">
+</div>
+
+---
+
+## Loss Graphs
+
+<div style="text-align: center;">
+<img src="https://cdn.markslides.ai/users/1695/images/jvXxbx1ujWpU8nBb1lGa4" width="1500" height="750">
+</div>
+
+---
+
+## Train and Validation Loss - Model 1 vs Model 2
+
+<div style="text-align: center;">
+<img src="https://cdn.markslides.ai/users/1695/images/Y0-_LB-340MItz7tTKFEV" width="900" height="500">
+</div>
+
+---
+
 ## BLEU Score
-- BLEU (Bilingual Evaluation Understudy):
+
+- BLEU **(Bilingual Evaluation Understudy)**:
   - Measures similarity between machine translation and human translation
   - Based on overlapping n-grams (word groups)
   - Score range: 0 (worst) to 100 (perfect)
@@ -454,6 +478,7 @@ class PositionwiseFeedForward(nn.Module):
 - BLEU is industry standard for translation quality
 
 ---
+
 ## BLEU Score Evaluation
 
 - Loaded trained model weights directly (.pt checkpoints)
@@ -462,9 +487,8 @@ class PositionwiseFeedForward(nn.Module):
   - Decode each input sentence
   - Tokenize output and references
   - Calculate BLEU using SacreBLEU library
-  - tqdm for batching and progress.
+  - tqdm for batching and progress
 - Evaluated on 55–100 examples for faster experimentation
-
 
 ---
 ## BLEU Results and Observations
@@ -475,11 +499,10 @@ class PositionwiseFeedForward(nn.Module):
   - Model 2 expected to perform better with larger batch and smoother loss curve
   - BLEU variation between models reflects real differences in training quality
 - Improvements:
-  - Optimize batch size, learning rate, accumulation.
-  - Increase BLEU evaluation samples.
-  - Try beam search decoding.
-  - Fine-tune on larger datasets.
-
+  - Optimize batch size, learning rate, accumulation
+  - Increase BLEU evaluation samples
+  - Try beam search decoding
+  - Fine-tune on larger datasets
 ---
 
 ## Demo and Attention Visualization

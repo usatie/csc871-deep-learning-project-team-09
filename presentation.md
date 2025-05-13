@@ -512,36 +512,26 @@ class PositionwiseFeedForward(nn.Module):
 ![bg right h:280](https://cdn.markslides.ai/users/1657/images/tU-5wRaQculcWIryIUYgq)
 
 ---
+## Training Performance Study (on 4× A100 GPUs)
+- Larger batch size -> Better performance
+- Optimal performance at batch size 512 (total execution time)
+- Maximum throughput at batch size 1024 (tokens/sec)
+- Diminishing returns observed after batch size 512
 
-## Training Performance Study
-
-- Training speed comparison:
-  - T4 GPU (Google Colab): [TBD] seconds/epoch
-  - Single A100 (Perlmutter login node): [TBD] seconds/epoch
-  - 4× A100 (Perlmutter GPU node):
-    - Config 1 (BS=128): ~49 seconds/epoch
-    - Config 2 (BS=32): ~135 seconds/epoch
-- ~2.75× speedup with larger batch size
-
+![bg right h:720](https://cdn.markslides.ai/users/1557/images/p6HRs3LWMlBV0aKN07iHs)
 ---
 
-## Implementation Challenges
+## Training Performance Study (on 4× A100 GPUs)
 
-- Setting up distributed training environment on Perlmutter
-- Data loading bottlenecks with large dataset
-- Model convergence issues in early iterations
-- GPU memory optimization for larger batch sizes
-- Debugging cryptic DDP errors
-
----
-
-## Solutions Implemented
-
-- Custom distributed training wrapper around PyTorch DDP
-- Optimized data loading with prefetching and pinned memory
-- Learning rate warmup to stabilize early training
-- Gradient accumulation to effectively increase batch size
-- Detailed logging for distributed training debugging
+| Batch Size | Accum. Steps | Exec. Time | Training Time | Tokens/Sec |
+|------------|--------------|------------|---------------|------------|
+| 16         | 64           | 314.00s    | 253.84s       | ~2,090     |
+| 32         | 32           | 184.91s    | 130.85s       | ~4,040     |
+| 64         | 16           | 118.89s    | 68.95s        | ~7,760     |
+| 128        | 8            | 95.20s     | 47.22s        | ~11,360    |
+| 256        | 4            | 89.86s     | 38.96s        | ~13,900    |
+| 512        | 2            | 86.43s     | 35.54s        | ~15,250    |
+| 1024       | 1            | 102.82s    | 33.33s        | ~16,150    |
 
 
 ---
@@ -596,9 +586,3 @@ PARAMETER DISTRIBUTION:
 - Training memory footprint:
   - Model parameters: ~237 MB
   - Optimizer states: ~474 MB (Adam uses 2x params)
-  - Activations: [TBD] MB per batch
-  - Gradients: ~237 MB
-- Total GPU memory usage:
-  - Config 1 (BS=128): [TBD] GB
-  - Config 2 (BS=32): [TBD] GB
-
